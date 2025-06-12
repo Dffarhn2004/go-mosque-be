@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  NamaLengkap String
+  Email       String   @unique
+  Password    String
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+
+  // Foreign Key
+  roleId   String
+  masjidId String? // Optional - hanya untuk role tertentu
+
+  // Relasi
+  role   Role     @relation(fields: [roleId], references: [id])
+  masjid Masjid?  @relation(fields: [masjidId], references: [id])
+  donasi Donasi[]
+
+  @@map("User")
+}
+
+model Role {
+  id   String @id @default(cuid())
+  Nama String
+
+  // Relasi
+  users User[]
+
+  @@map("Role")
+}
+
+enum StatusKepemilikan {
+  MILIK_SENDIRI
+  TANAH_WAKAF
+  HIBAH
+  SEWA
+}
+
+model Masjid {
+  id                String             @id @default(cuid())
+  Nama              String
+  Alamat            String
+  NomorTelepon      String
+  TanggalBerdiri    DateTime?
+  StatusKepemilikan StatusKepemilikan?
+  LuasTanah         Float?
+  Kapasitas_Jamaah  Int?
+  Deskripsi         String?            @db.Text
+  Visi              String?            @db.Text
+  Misi              String?            @db.Text
+  FotoLuarMasjid    String[]           @default([]) // Array of strings for exterior photos
+  FotoDalamMasjid   String[]           @default([]) // Array of strings for interior photos
+  SuratIzinMasjid   String?
+  PenghargaanMasjid String[]           @default([]) // Array of strings for awards
+  SuratPengantar    String?
+
+  fasilitasMasjid Fasilitas_Masjid[]
+  kegiatanMasjid  Kegiatan_Masjid[]
+
+  laporanMasjid             LaporanKeuanganMasjid[]
+  // Relasi ke tabel lain
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+  donasi_masjid             Donasi_Masjid[]
+  users                     User[] // Relasi balik dari User
+
+  @@map("Masjid")
+}
+
+model LaporanKeuanganMasjid {
+  id         String               @id @default(cuid())
+  masjidId   String
+  masjid     Masjid               @relation(fields: [masjidId], references: [id])
+  jenis      JenisLaporanKeuangan
+  fileUrl    String // URL atau path file
+  uploadedAt DateTime             @default(now())
+  fileSizeKB Int
+
+  @@map("Laporan_Keuangan_Masjid")
+}
+
+enum JenisLaporanKeuangan {
+  POSISI_KEUANGAN
+  PENGHASILAN_KOMP
+  PERUBAHAN_ASET_NETO
+  ARUS_KAS
+  CATATAN
+}
+
+enum KondisiFasilitas {
+  KURANG_BAIK
+  CUKUP_BAIK
+  BAIK
+  BAIK_SEKALI
+  SANGAT_BAIK
+}
+
+model Fasilitas_Masjid {
+  id      String           @id @default(cuid())
+  Nama    String
+  Kondisi KondisiFasilitas
+
+  masjidId String // foreign key
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  @@map("Fasilitas_Masjid")
+}
+
+model Kegiatan_Masjid {
+  id          String   @id @default(cuid())
+  Nama        String
+  Dokumentasi String[] @default([]) // Array of strings for documentation photos
+
+  masjidId String // foreign key
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  @@map("Kegiatan_Masjid")
+}
+
+model Kategori_Donasi {
+  id   String @id @default(cuid())
+  Nama String
+
+  // Relasi
+  donasi_masjid             Donasi_Masjid[]
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Kategori_Donasi")
+}
+
+model Kategori_Pengeluaran {
+  id   String @id @default(cuid())
+  Nama String
+
+  // Relasi
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Kategori_Pengeluaran")
+}
+
+enum StatusDonasi {
+  Pending
+  Sukses
+}
+
+model Donasi {
+  id           String       @id @default(cuid())
+  Nama         String
+  Email        String?
+  NoTelepon    String?
+  Keterangan   String?      @db.Text
+  JumlahDonasi Decimal      @db.Decimal(15, 2)
+  StatusDonasi StatusDonasi @default(Pending)
+  CreatedAt    DateTime     @default(now())
+
+  // Foreign Keys
+  id_donasi_masjid String
+  id_user          String
+
+  // Relasi
+  donasi_masjid Donasi_Masjid @relation(fields: [id_donasi_masjid], references: [id])
+  user          User          @relation(fields: [id_user], references: [id])
+
+  @@map("Donasi")
+}
+
+model Donasi_Masjid {
+  id                  String   @id @default(cuid())
+  Nama                String
+  Deskripsi           String?  @db.Text
+  FotoDonasi          String?  @db.Text
+  TargetUangDonasi    Decimal  @db.Decimal(15, 2)
+  UangDonasiTerkumpul Decimal  @default(0) @db.Decimal(15, 2)
+  UangPengeluaran     Decimal  @default(0) @db.Decimal(15, 2)
+  CreatedAt           DateTime @default(now())
+
+  // Foreign Keys
+  id_masjid          String
+  id_kategori_donasi String
+
+  // Relasi
+  masjid          Masjid          @relation(fields: [id_masjid], references: [id])
+  kategori_donasi Kategori_Donasi @relation(fields: [id_kategori_donasi], references: [id])
+
+  // Relasi ke tabel lain
+  donasi                    Donasi[]
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Donasi_Masjid")
+}
+
+model Pengeluaran_Donasi_Masjid {
+  id                   String   @id @default(cuid())
+  TujuanPengeluaran    String
+  FotoPengeluaran      String?  @db.Text
+  DeskripsiPengeluaran String?  @db.Text
+  UangPengeluaran      Decimal  @db.Decimal(15, 2)
+  CreatedAt            DateTime @default(now())
+
+  // Foreign Keys
+  id_donasi_masjid        String
+  id_kategori_pengeluaran String
+
+  // Relasi
+  donasi_masjid        Donasi_Masjid        @relation(fields: [id_donasi_masjid], references: [id])
+  kategori_pengeluaran Kategori_Pengeluaran @relation(fields: [id_kategori_pengeluaran], references: [id])
+  Masjid               Masjid?              @relation(fields: [masjidId], references: [id])
+  masjidId             String?
+  Kategori_Donasi      Kategori_Donasi?     @relation(fields: [kategori_DonasiId], references: [id])
+  kategori_DonasiId    String?
+
+  @@map("Pengeluaran_Donasi_Masjid")
+}

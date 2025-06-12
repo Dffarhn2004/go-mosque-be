@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Masjid" ALTER COLUMN "TanggalBerdiri" DROP NOT NULL,
+ALTER COLUMN "StatusKepemilikan" DROP NOT NULL,
+ALTER COLUMN "LuasTanah" DROP NOT NULL,
+ALTER COLUMN "Kapasitas_Jamaah" DROP NOT NULL;

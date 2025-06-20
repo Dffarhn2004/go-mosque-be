@@ -99,6 +99,8 @@ enum JenisLaporanKeuangan {
   PERUBAHAN_ASET_NETO
   ARUS_KAS
   CATATAN
+  KEUANGAN_BULANAN
+  KEUANGAN_TAHUNAN
 }
 
 enum KondisiFasilitas {

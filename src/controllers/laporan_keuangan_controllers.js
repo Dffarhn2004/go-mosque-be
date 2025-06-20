@@ -39,6 +39,8 @@ exports.createDonasi = async (req, res) => {
       "PERUBAHAN_ASET_NETO",
       "ARUS_KAS",
       "CATATAN",
+      "KEUANGAN_BULANAN",
+      "KEUANGAN_TAHUNAN",
     ];
 
     if (!validTypes.includes(type)) {
@@ -52,7 +54,7 @@ exports.createDonasi = async (req, res) => {
         file,
       });
 
-    successResponse(res, `Laporan uploaded`, uploadResult,201);
+    successResponse(res, `Laporan uploaded`, uploadResult, 201);
   } catch (err) {
     errorResponse(res, "Upload failed: " + err.message);
   }

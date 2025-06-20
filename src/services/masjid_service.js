@@ -5,23 +5,7 @@ const {
   FBdeleteAllFilesInPath,
 } = require("../utils/upload_service");
 
-// async function getMasjidById(id, userId) {
-//   return await prisma.masjid.findUnique({
-//     where: {
-//       id: id,
-//       users: {
-//         some: {
-//           id: userId, // Ensure the user is associated with the masjid
-//         },
-//       },
-//     },
-//     include: {
-//       fasilitasMasjid: true,
-//       kegiatanMasjid: true,
-//       pengeluaran_donasi_masjid: true,
-//     },
-//   });
-// }
+
 async function getMasjidById(id) {
   try {
     const masjid = await prisma.masjid.findUnique({

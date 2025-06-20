@@ -10,6 +10,7 @@ const pengeluaranDonasiRouter = require("./pengeluaran_donasi_router"); // Impor
 const donasiMasjidRouter = require("./donasi_masjid_router"); // Import router donasi masjid
 const kategoriDonasiRouter = require("./kategori_donasi_router"); // Import router kategori donasi
 const laporanKeuanganRouter = require("./laporan_keuangan_router")
+const statistikRouter = require("./statistik_route")
 
 const router = express.Router(); // Buat instance router Express
 
@@ -24,7 +25,7 @@ router.use("/donasi-masjid", donasiMasjidRouter);
 router.use("/pengeluaran-donasi", pengeluaranDonasiRouter); // Gunakan router pengeluaran donasi
 router.use('/donasi', donasiRouter); // Uncomment if you have a donasi router
 router.use("/laporan-keuangan",laporanKeuanganRouter)
-// router.use('/merchant', merchantRouter)
+router.use('/statistik', statistikRouter)
 // router.use('/product',productRouter)
 
 // Export router untuk digunakan di main.js

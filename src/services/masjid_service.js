@@ -5,7 +5,6 @@ const {
   FBdeleteAllFilesInPath,
 } = require("../utils/upload_service");
 
-
 async function getMasjidById(id) {
   try {
     const masjid = await prisma.masjid.findUnique({
@@ -137,8 +136,13 @@ async function updateMasjidFull(idMasjid, p, fileFields) {
           ...(p.StatusKepemilikan && {
             StatusKepemilikan: p.StatusKepemilikan,
           }),
-          ...(p.LuasTanah && { LuasTanah: p.LuasTanah }),
-          ...(p.Kapasitas_Jamaah && { Kapasitas_Jamaah: p.Kapasitas_Jamaah }),
+          ...(p.LuasTanah &&
+            !isNaN(parseFloat(p.LuasTanah)) && {
+              LuasTanah: parseFloat(p.LuasTanah),
+            }),
+          ...(p.Kapasitas_Jamaah && {
+            Kapasitas_Jamaah: parseInt(p.Kapasitas_Jamaah),
+          }),
           ...(p.Deskripsi && { Deskripsi: p.Deskripsi }),
           ...(p.Visi && { Visi: p.Visi }),
           ...(p.Misi && { Misi: p.Misi }),

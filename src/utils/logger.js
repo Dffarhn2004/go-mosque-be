@@ -4,6 +4,7 @@ const DailyRotateFile = require("winston-daily-rotate-file");
 const path = require("path");
 
 const env = process.env.NODE_ENV || "development";
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV;
 const logDir = "logs";
 
 const logFormat = format.printf(({ level, message, timestamp, ...meta }) => {
@@ -14,20 +15,35 @@ const logFormat = format.printf(({ level, message, timestamp, ...meta }) => {
   return msg;
 });
 
+// Create logger with appropriate transports based on environment
 const logger = createLogger({
   level: "info",
   format: format.combine(
     format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     logFormat
   ),
-  transports: [
+  transports: [],
+});
+
+// In Vercel/production, only use console transport (read-only filesystem)
+if (isVercel || env === "production") {
+  logger.add(
+    new transports.Console({
+      format: format.combine(format.colorize(), format.simple()),
+    })
+  );
+} else {
+  // In development, use file transports
+  logger.add(
     new DailyRotateFile({
       filename: path.join(logDir, "app-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
       zippedArchive: true,
       maxSize: "20m",
       maxFiles: "14d",
-    }),
+    })
+  );
+  logger.add(
     new DailyRotateFile({
       filename: path.join(logDir, "error-%DATE%.log"),
       level: "error",
@@ -35,11 +51,8 @@ const logger = createLogger({
       zippedArchive: true,
       maxSize: "20m",
       maxFiles: "30d",
-    }),
-  ],
-});
-
-if (env === "development") {
+    })
+  );
   logger.add(
     new transports.Console({
       format: format.combine(format.colorize(), format.simple()),

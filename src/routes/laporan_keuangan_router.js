@@ -24,6 +24,53 @@ const upload = multer({
   },
 });
 
+// Public routes untuk laporan keuangan (tidak perlu authentication, masjidId dari query params)
+// GET /laporan-keuangan/public/jurnal/posisi-keuangan - Generate Neraca untuk public user
+laporanKeuanganRouter.get(
+  "/public/jurnal/posisi-keuangan",
+  laporanKeuanganController.generateNeracaFromJurnalPublic
+);
+
+// GET /laporan-keuangan/public/jurnal/penghasilan-komprehensif - Generate Laba Rugi untuk public user
+laporanKeuanganRouter.get(
+  "/public/jurnal/penghasilan-komprehensif",
+  laporanKeuanganController.generateLabaRugiFromJurnalPublic
+);
+
+// GET /laporan-keuangan/public/jurnal/perubahan-aset-neto - Generate Perubahan Ekuitas untuk public user
+laporanKeuanganRouter.get(
+  "/public/jurnal/perubahan-aset-neto",
+  laporanKeuanganController.generatePerubahanEkuitasFromJurnalPublic
+);
+
+// Jurnal-based laporan keuangan endpoints (must be before /:id route)
+laporanKeuanganRouter.use(authenticateJWT);
+
+// GET /laporan-keuangan/jurnal/posisi-keuangan - Generate Neraca
+laporanKeuanganRouter.get(
+  "/jurnal/posisi-keuangan",
+  laporanKeuanganController.generateNeracaFromJurnal
+);
+
+// GET /laporan-keuangan/jurnal/penghasilan-komprehensif - Generate Laba Rugi
+laporanKeuanganRouter.get(
+  "/jurnal/penghasilan-komprehensif",
+  laporanKeuanganController.generateLabaRugiFromJurnal
+);
+
+// GET /laporan-keuangan/jurnal/perubahan-aset-neto - Generate Perubahan Ekuitas
+laporanKeuanganRouter.get(
+  "/jurnal/perubahan-aset-neto",
+  laporanKeuanganController.generatePerubahanEkuitasFromJurnal
+);
+
+// GET /laporan-keuangan/jurnal/arus-kas - Generate Arus Kas
+laporanKeuanganRouter.get(
+  "/jurnal/arus-kas",
+  laporanKeuanganController.generateArusKasFromJurnal
+);
+
+// Existing routes
 laporanKeuanganRouter.get(
   "/:idLaporanKeuangan",
   laporanKeuanganController.getLaporanMasjid

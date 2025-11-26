@@ -18,8 +18,9 @@ async function getAllDonasiMasjid(idMasjid, limit) {
         select: {
           id: true,
         },
-      }
+      },
     },
+    orderBy: { CreatedAt: "desc" },
   };
 
   if (limit) {
@@ -37,6 +38,7 @@ async function getAllDonasiMasjidUser(limit) {
       pengeluaran_donasi_masjid: true, // Include related pengeluaran_donasi_masjid data
       kategori_donasi: true,
     },
+    orderBy: { CreatedAt: "desc" },
     // orderBy: Prisma.sql`RANDOM()`, // Randomize the order of results
     take: limit, // Limit the number of results if limit is provided
   });
@@ -73,7 +75,7 @@ async function getDonasiMasjid(idDonasiMasjid, idMasjid) {
         },
       }, // Include related pengeluaran_donasi_masjid data
       kategori_donasi: true,
-      donasi:true
+      donasi: true,
     },
   });
 }
@@ -119,5 +121,5 @@ module.exports = {
   getDonasiMasjid,
   createDonasiMasjid,
   getAllDonasiMasjidUser,
-  getDonasiMasjidUser
+  getDonasiMasjidUser,
 };

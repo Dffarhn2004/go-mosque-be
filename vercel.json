@@ -19,8 +19,7 @@
   "functions": {
     "index.js": {
       "maxDuration": 30,
-      "memory": 1024,
-      "regions": ["sin1"]
+      "memory": 1024
     }
   },
   "env": {

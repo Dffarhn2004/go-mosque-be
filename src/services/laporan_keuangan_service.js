@@ -57,6 +57,19 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
         ],
         isActive: true,
       },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: true,
+        normalBalance: true,
+        restriction: true,
+        report: true,
+        category: true,
+        pathCode: true,
+        parentId: true,
+        isGroup: true,
+      },
     });
 
     // Filter only detail accounts for balance calculation
@@ -98,6 +111,9 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
     Object.values(balances).forEach(({ account, tanpaPembatasan, denganPembatasan, saldo }) => {
       if (saldo === 0) return; // Skip zero balance
 
+      // Filter hanya akun dengan report = NERACA
+      if (account.report !== "NERACA") return;
+
       const accountData = {
         id: account.id,
         kodeAkun: account.code,
@@ -107,8 +123,10 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
         saldo: Number(saldo),
       };
 
-      // Get kategori from parent path
-      let kategoriName = getKategoriName(account, allAccounts);
+      // Get kategori dari field category di Account, fallback ke parent name
+      let kategoriName = account.category 
+        ? getCategoryDisplayName(account.category)
+        : getKategoriName(account, allAccounts);
 
       if (account.type === "ASSET") {
         if (!aset[kategoriName]) {
@@ -318,6 +336,9 @@ async function generateLabaRugiFromJurnal(masjidId, tanggalAwal, tanggalAkhir) {
     let totalBebanDengan = 0;
 
     Object.values(balances).forEach(({ account, tanpaPembatasan, denganPembatasan, saldo }) => {
+      // Filter hanya akun dengan report = LAPORAN_PENGHASILAN_KOMPREHENSIF
+      if (account.report !== "LAPORAN_PENGHASILAN_KOMPREHENSIF") return;
+
       const accountData = {
         id: account.id,
         kodeAkun: account.code,
@@ -327,7 +348,10 @@ async function generateLabaRugiFromJurnal(masjidId, tanggalAwal, tanggalAkhir) {
         saldo: Number(saldo),
       };
 
-      const kategoriName = getKategoriName(account, allAccounts);
+      // Get kategori dari field category di Account, fallback ke parent name
+      const kategoriName = account.category 
+        ? getCategoryDisplayName(account.category)
+        : getKategoriName(account, allAccounts);
 
       if (account.type === "REVENUE") {
         if (!pendapatan[kategoriName]) {
@@ -664,9 +688,31 @@ async function generateArusKasFromJurnal(masjidId, tanggalAwal, tanggalAkhir) {
 }
 
 /**
- * Helper function to get kategori name from account
+ * Helper function to get kategori display name from category enum
+ */
+function getCategoryDisplayName(category) {
+  const categoryMap = {
+    ASET_LANCAR: "Aset Lancar",
+    ASET_TIDAK_LANCAR: "Aset Tidak Lancar",
+    HUTANG_JANGKA_PENDEK: "Hutang Jangka Pendek",
+    HUTANG_JANGKA_PANJANG: "Hutang Jangka Panjang",
+    ASET_NETO: "Aset Neto",
+    PENDAPATAN: "Pendapatan",
+    BEBAN: "Beban",
+    PENGHASILAN_KOMPREHENSIF_LAIN: "Penghasilan Komprehensif Lain",
+  };
+  return categoryMap[category] || category;
+}
+
+/**
+ * Helper function to get kategori name from account (fallback)
  */
 function getKategoriName(account, allAccounts) {
+  // Jika account punya category field, gunakan itu
+  if (account.category) {
+    return getCategoryDisplayName(account.category);
+  }
+
   // Try to find parent group account
   if (account.parentId) {
     const parent = allAccounts.find((a) => a.id === account.parentId);

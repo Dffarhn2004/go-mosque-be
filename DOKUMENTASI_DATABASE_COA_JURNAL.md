@@ -49,10 +49,13 @@ CREATE TABLE "Account" (
     "name" TEXT NOT NULL,
     "parentId" TEXT,
     "type" "AccountType" NOT NULL,
+    "normalBalance" "NormalBalance" NOT NULL,
     "isGroup" BOOLEAN NOT NULL DEFAULT false,
     "pathCode" TEXT NOT NULL,
     "masjidId" TEXT,
-    "hasRestriction" BOOLEAN NOT NULL DEFAULT false,
+    "restriction" "AccountRestriction",
+    "report" "AccountReport",
+    "category" "AccountCategory",
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -66,14 +69,17 @@ CREATE TABLE "Account" (
 | Field | Tipe Data | Keterangan |
 |-------|-----------|------------|
 | `id` | TEXT (CUID) | Primary Key, identifier unik untuk setiap akun |
-| `code` | TEXT | Kode akun (contoh: "1.1.1.01", "4.1") |
+| `code` | TEXT | Kode akun (contoh: "1.1.1.01" untuk parent, "111101" untuk leaf dari FINALAKUN.md) |
 | `name` | TEXT | Nama akun (contoh: "Kas Besar", "Pendapatan Jasa") |
 | `parentId` | TEXT (Nullable) | Foreign Key ke `Account.id`, untuk struktur hierarkis |
 | `type` | AccountType (Enum) | Tipe akun: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE |
+| `normalBalance` | NormalBalance (Enum) | DEBIT atau KREDIT - menentukan saldo normal akun |
 | `isGroup` | BOOLEAN | `true` = akun group/header, `false` = akun detail |
 | `pathCode` | TEXT | Full path code untuk tracking hierarki (contoh: "1.1.1.01") |
 | `masjidId` | TEXT (Nullable) | Foreign Key ke `Masjid.id`. NULL = akun default global, NOT NULL = akun custom per masjid |
-| `hasRestriction` | BOOLEAN | Flag untuk menandai apakah akun memiliki pembatasan penggunaan. `true` = ada pembatasan, `false` = tidak ada pembatasan (default: false) |
+| `restriction` | AccountRestriction (Enum, Nullable) | `TANPA_PEMBATASAN` atau `DENGAN_PEMBATASAN`. NULL untuk group account, wajib untuk detail account |
+| `report` | AccountReport (Enum, Nullable) | `NERACA` atau `LAPORAN_PENGHASILAN_KOMPREHENSIF`. NULL untuk group account, wajib untuk detail account |
+| `category` | AccountCategory (Enum, Nullable) | Kategori akun: ASET_LANCAR, ASET_TIDAK_LANCAR, HUTANG_JANGKA_PENDEK, HUTANG_JANGKA_PANJANG, ASET_NETO, PENDAPATAN, BEBAN, PENGHASILAN_KOMPREHENSIF_LAIN. NULL untuk group account, wajib untuk detail account |
 | `isActive` | BOOLEAN | Status aktif/nonaktif akun (default: true) |
 | `createdAt` | TIMESTAMP | Waktu pembuatan record |
 | `updatedAt` | TIMESTAMP | Waktu terakhir update record |
@@ -106,11 +112,30 @@ CREATE TABLE "Account" (
    - `isGroup = true`: Akun header/group, tidak dapat digunakan untuk jurnal
    - `isGroup = false`: Akun detail, dapat digunakan untuk pencatatan jurnal
 
-5. **Pembatasan Penggunaan (hasRestriction)**:
-   - `hasRestriction = true`: Akun memiliki pembatasan penggunaan dana (contoh: Kas Kecil dengan pembatasan untuk pembangunan WC)
-   - `hasRestriction = false`: Akun tidak memiliki pembatasan (contoh: Kas Kecil umum)
-   - Field ini hanya menandai tipe input akun (dengan/tanpa pembatasan), bukan deskripsi pembatasan
-   - Contoh: Dua akun "Kas Kecil" dapat dibuat dengan `hasRestriction` berbeda untuk membedakan kas kecil terbatas dan kas kecil umum
+5. **Pembatasan Penggunaan (restriction)**:
+   - Field `restriction` di Account menentukan apakah akun memiliki pembatasan penggunaan dana
+   - `TANPA_PEMBATASAN`: Akun tidak memiliki pembatasan (contoh: Kas Tunai umum)
+   - `DENGAN_PEMBATASAN`: Akun memiliki pembatasan penggunaan dana (contoh: Kas Tunai Dengan Pembatasan)
+   - Field ini NULL untuk group account, wajib diisi untuk detail account
+   - Saat membuat JurnalEntry, jika `hasRestriction` tidak diisi, akan diambil dari `Account.restriction`
+
+6. **Jenis Laporan (report)**:
+   - Field `report` menentukan laporan keuangan mana yang menggunakan akun ini
+   - `NERACA`: Akun digunakan di Laporan Posisi Keuangan (Neraca)
+   - `LAPORAN_PENGHASILAN_KOMPREHENSIF`: Akun digunakan di Laporan Penghasilan Komprehensif
+   - Field ini NULL untuk group account, wajib diisi untuk detail account
+
+7. **Kategori Akun (category)**:
+   - Field `category` menentukan kategori akun untuk grouping di laporan keuangan
+   - Nilai: ASET_LANCAR, ASET_TIDAK_LANCAR, HUTANG_JANGKA_PENDEK, HUTANG_JANGKA_PANJANG, ASET_NETO, PENDAPATAN, BEBAN, PENGHASILAN_KOMPREHENSIF_LAIN
+   - Field ini NULL untuk group account, wajib diisi untuk detail account
+   - Digunakan untuk grouping akun di laporan keuangan
+
+8. **Struktur COA FINAL**:
+   - COA menggunakan struktur hierarkis dengan parent (group) dan leaf (detail)
+   - Parent account menggunakan kode hierarkis (contoh: "1", "1.1", "1.1.1")
+   - Leaf account menggunakan kode 6 digit dari FINALAKUN.md (contoh: "111101", "111102")
+   - Setiap leaf account harus memiliki parent dan field lengkap (restriction, report, category)
 
 ---
 

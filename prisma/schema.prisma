@@ -243,9 +243,30 @@ enum NormalBalance {
   KREDIT
 }
 
+enum AccountRestriction {
+  TANPA_PEMBATASAN
+  DENGAN_PEMBATASAN
+}
+
+enum AccountReport {
+  NERACA
+  LAPORAN_PENGHASILAN_KOMPREHENSIF
+}
+
+enum AccountCategory {
+  ASET_LANCAR
+  ASET_TIDAK_LANCAR
+  HUTANG_JANGKA_PENDEK
+  HUTANG_JANGKA_PANJANG
+  ASET_NETO
+  PENDAPATAN
+  BEBAN
+  PENGHASILAN_KOMPREHENSIF_LAIN
+}
+
 model Account {
   id            String        @id @default(cuid())
-  code          String // Contoh: "1.1.1.01"
+  code          String // Contoh: "1.1.1.01" atau "111101"
   name          String // Nama akun
   parentId      String? // Self-referencing untuk hierarchical
   parent        Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
@@ -258,6 +279,11 @@ model Account {
   isActive      Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  // Field baru untuk COA FINAL
+  restriction   AccountRestriction? // NULL untuk group, wajib untuk detail account
+  report        AccountReport? // NULL untuk group, wajib untuk detail account
+  category      AccountCategory? // NULL untuk group, wajib untuk detail account
 
   // Relations
   masjid        Masjid?       @relation(fields: [masjidId], references: [id])

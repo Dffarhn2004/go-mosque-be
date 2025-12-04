@@ -19,9 +19,6 @@ accountRouter.get("/tree", accountController.getAccountTree);
 // GET /coa/next-code - Get next available account code
 accountRouter.get("/next-code", accountController.getNextAccountCode);
 
-// GET /coa/seed - Seed default COA
-accountRouter.post("/seed", accountController.seedDefaultCOA);
-
 // GET /coa/:id - Get account by ID
 accountRouter.get("/:id", accountController.getAccountById);
 

@@ -70,6 +70,10 @@ async function getAllJurnalTransactions(filters = {}) {
                 name: true,
                 type: true,
                 pathCode: true,
+                normalBalance: true,
+                restriction: true,
+                report: true,
+                category: true,
               },
             },
           },
@@ -115,6 +119,10 @@ async function getJurnalTransactionById(id) {
                 name: true,
                 type: true,
                 pathCode: true,
+                normalBalance: true,
+                restriction: true,
+                report: true,
+                category: true,
               },
             },
           },
@@ -209,6 +217,9 @@ async function createJurnalTransaction(transactionData) {
       throw new CustomError("One or more accounts not found", 404);
     }
 
+    // Create map for quick lookup
+    const accountMap = new Map(accounts.map((acc) => [acc.id, acc]));
+
     // Check all accounts are valid
     for (const account of accounts) {
       if (!account.isActive) {
@@ -219,6 +230,18 @@ async function createJurnalTransaction(transactionData) {
         throw new CustomError(`Cannot use group account ${account.name} for jurnal`, 400);
       }
     }
+
+    // Set default hasRestriction dari Account.restriction jika tidak diisi
+    entries.forEach((entry) => {
+      if (entry.hasRestriction === undefined || entry.hasRestriction === null) {
+        const account = accountMap.get(entry.akunId);
+        if (account && account.restriction) {
+          entry.hasRestriction = account.restriction === "DENGAN_PEMBATASAN";
+        } else {
+          entry.hasRestriction = false; // Default
+        }
+      }
+    });
 
     // Create transaction with entries in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -328,6 +351,9 @@ async function updateJurnalTransaction(id, transactionData) {
         throw new CustomError("One or more accounts not found", 404);
       }
 
+      // Create map for quick lookup
+      const accountMap = new Map(accounts.map((acc) => [acc.id, acc]));
+
       for (const account of accounts) {
         if (!account.isActive) {
           throw new CustomError(`Account ${account.name} is not active`, 400);
@@ -337,6 +363,18 @@ async function updateJurnalTransaction(id, transactionData) {
           throw new CustomError(`Cannot use group account ${account.name} for jurnal`, 400);
         }
       }
+
+      // Set default hasRestriction dari Account.restriction jika tidak diisi
+      transactionData.entries.forEach((entry) => {
+        if (entry.hasRestriction === undefined || entry.hasRestriction === null) {
+          const account = accountMap.get(entry.akunId);
+          if (account && account.restriction) {
+            entry.hasRestriction = account.restriction === "DENGAN_PEMBATASAN";
+          } else {
+            entry.hasRestriction = false; // Default
+          }
+        }
+      });
     }
 
     // Update transaction and entries in a transaction
@@ -439,6 +477,17 @@ async function calculateAccountBalances(masjidId, endDate = null) {
         isActive: true,
         isGroup: false, // Only detail accounts
       },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: true,
+        normalBalance: true,
+        restriction: true,
+        report: true,
+        category: true,
+        pathCode: true,
+      },
     });
 
     // Get all jurnal entries until endDate
@@ -499,6 +548,17 @@ async function calculateAccountBalancesByRestriction(masjidId, endDate = null) {
         ],
         isActive: true,
         isGroup: false, // Only detail accounts
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: true,
+        normalBalance: true,
+        restriction: true,
+        report: true,
+        category: true,
+        pathCode: true,
       },
     });
 

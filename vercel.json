@@ -3,7 +3,11 @@
   "builds": [
     {
       "src": "index.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 30,
+        "memory": 1024
+      }
     }
   ],
   "routes": [
@@ -12,6 +16,13 @@
       "dest": "index.js"
     }
   ],
+  "functions": {
+    "index.js": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "regions": ["sin1"]
+    }
+  },
   "env": {
     "NODE_ENV": "production"
   },

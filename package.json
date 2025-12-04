@@ -6,7 +6,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:latency": "node test-latency.js",
+    "test:latency:prod": "node test-latency-prod.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -17,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

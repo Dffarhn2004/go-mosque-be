@@ -14,10 +14,13 @@
   - `tanggalAkhir = {tahun}-12-31T23:59:59.999Z`
 
 ## Alur Perhitungan (service `generatePerubahanEkuitasFromJurnal`)
-1) **Saldo awal ekuitas**: hitung saldo semua akun EQUITY sampai akhir hari sebelum `tanggalAwal` (31/12 tahun N-1). Ini sudah termasuk akumulasi penghasilan komprehensif/OCI tahun sebelumnya.
+1) **Saldo awal ekuitas**: hitung saldo semua akun EQUITY sampai akhir hari sebelum `tanggalAwal` (31/12 tahun N-1). Sudah termasuk akumulasi penghasilan komprehensif/OCI tahun sebelumnya.
 2) **Laba rugi periode**: hitung laba rugi (termasuk OCI) untuk rentang `tanggalAwal`–`tanggalAkhir`.
-3) **Saldo akhir ekuitas**: hitung saldo semua akun EQUITY sampai `tanggalAkhir` (31/12 tahun N).
-4) **Perubahan modal**: `saldo akhir - saldo awal - laba rugi`.
+3) **Saldo akhir ekuitas** (auto-roll OCI/laba ke ekuitas tanpa jurnal penutup):
+   - `saldoAkhirEkuitasTanpa = saldoAwalEkuitasTanpa + labaRugiTanpa`
+   - `saldoAkhirEkuitasDengan = saldoAwalEkuitasDengan + labaRugiDengan`
+   - `saldoAkhirEkuitas = saldoAkhirEkuitasTanpa + saldoAkhirEkuitasDengan`
+4) **Perubahan modal**: diset 0 (tidak ada perubahan modal eksplisit). Jika di masa depan ada transaksi ekuitas eksplisit, bisa ditambahkan kembali.
 
 ## Contoh Request
 ```bash

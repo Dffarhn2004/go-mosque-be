@@ -518,20 +518,15 @@ async function generatePerubahanEkuitasFromJurnal(
       masjidId,
       tanggalAkhirDate
     );
-    const saldoAkhirEkuitasTanpa = ekuitasAccounts.reduce(
-      (total, acc) => total + (Number(balancesAkhir[acc.id]?.tanpaPembatasan) || 0),
-      0
-    );
-    const saldoAkhirEkuitasDengan = ekuitasAccounts.reduce(
-      (total, acc) => total + (Number(balancesAkhir[acc.id]?.denganPembatasan) || 0),
-      0
-    );
+    // Opsi 2: auto-roll laba/OCI ke saldo akhir tanpa perlu jurnal penutup
+    const saldoAkhirEkuitasTanpa = saldoAwalEkuitasTanpa + labaRugiTanpa;
+    const saldoAkhirEkuitasDengan = saldoAwalEkuitasDengan + labaRugiDengan;
     const saldoAkhirEkuitas = saldoAkhirEkuitasTanpa + saldoAkhirEkuitasDengan;
     
-    // Perubahan modal = perubahan total ekuitas - laba rugi
-    const perubahanModalTanpa = saldoAkhirEkuitasTanpa - saldoAwalEkuitasTanpa - labaRugiTanpa;
-    const perubahanModalDengan = saldoAkhirEkuitasDengan - saldoAwalEkuitasDengan - labaRugiDengan;
-    const perubahanModal = perubahanModalTanpa + perubahanModalDengan;
+    // Tidak ada perubahan modal eksplisit; nilai di-roll dari laba rugi
+    const perubahanModalTanpa = 0;
+    const perubahanModalDengan = 0;
+    const perubahanModal = 0;
 
     return {
       saldoAwalEkuitasTanpa,

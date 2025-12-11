@@ -458,6 +458,12 @@ async function generatePerubahanEkuitasFromJurnal(
       masjidId,
       tanggalAwalDate
     );
+    // Tambahkan laba rugi kumulatif (OCI) sampai sebelum periode berjalan
+    const labaRugiKumulatif = await generateLabaRugiFromJurnal(
+      masjidId,
+      new Date("1900-01-01"),
+      tanggalAwalDate
+    );
     
     // Debug: log untuk memastikan perhitungan saldo awal
     console.log('DEBUG - Perhitungan Saldo Awal Ekuitas:');
@@ -476,23 +482,20 @@ async function generatePerubahanEkuitasFromJurnal(
       });
     });
     
-    const saldoAwalEkuitasTanpa = ekuitasAccounts.reduce(
-      (total, acc) => {
+    const saldoAwalEkuitasTanpa =
+      ekuitasAccounts.reduce((total, acc) => {
         const balance = balancesAwal[acc.id];
         const value = Number(balance?.tanpaPembatasan) || 0;
-        console.log(`    - Akun ${acc.code}: ${value} (total: ${total + value})`);
         return total + value;
-      },
-      0
-    );
-    const saldoAwalEkuitasDengan = ekuitasAccounts.reduce(
-      (total, acc) => {
+      }, 0) + (labaRugiKumulatif.labaRugiTanpa || 0);
+
+    const saldoAwalEkuitasDengan =
+      ekuitasAccounts.reduce((total, acc) => {
         const balance = balancesAwal[acc.id];
         const value = Number(balance?.denganPembatasan) || 0;
         return total + value;
-      },
-      0
-    );
+      }, 0) + (labaRugiKumulatif.labaRugiDengan || 0);
+
     const saldoAwalEkuitas = saldoAwalEkuitasTanpa + saldoAwalEkuitasDengan;
     
     console.log('  - saldoAwalEkuitasTanpa:', saldoAwalEkuitasTanpa);

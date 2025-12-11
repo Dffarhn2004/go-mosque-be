@@ -14,7 +14,7 @@
   - `tanggalAkhir = {tahun}-12-31T23:59:59.999Z`
 
 ## Alur Perhitungan (service `generatePerubahanEkuitasFromJurnal`)
-1) **Saldo awal ekuitas**: hitung saldo semua akun EQUITY sampai akhir hari sebelum `tanggalAwal` (31/12 tahun N-1). Sudah termasuk akumulasi penghasilan komprehensif/OCI tahun sebelumnya.
+1) **Saldo awal ekuitas**: hitung saldo semua akun EQUITY sampai akhir hari sebelum `tanggalAwal` (31/12 tahun N-1) + laba rugi kumulatif (termasuk OCI) sampai tanggal tersebut. Ini memastikan laba/OCI tahun-tahun sebelumnya otomatis menjadi saldo awal, tanpa perlu jurnal penutup.
 2) **Laba rugi periode**: hitung laba rugi (termasuk OCI) untuk rentang `tanggalAwal`–`tanggalAkhir`.
 3) **Saldo akhir ekuitas** (auto-roll OCI/laba ke ekuitas tanpa jurnal penutup):
    - `saldoAkhirEkuitasTanpa = saldoAwalEkuitasTanpa + labaRugiTanpa`

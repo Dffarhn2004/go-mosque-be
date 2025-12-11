@@ -65,8 +65,7 @@ Menampilkan pendapatan dan beban dalam periode tertentu untuk menghitung surplus
 ### Parameter Input
 
 - `masjidId`: ID masjid
-- `tanggalAwal`: Tanggal awal periode (YYYY-MM-DD)
-- `tanggalAkhir`: Tanggal akhir periode (YYYY-MM-DD)
+- `tahun`: angka 4 digit. Sistem otomatis menetapkan `tanggalAwal = 1 Januari tahun` dan `tanggalAkhir = 31 Desember tahun`.
 
 ### Langkah Perhitungan
 

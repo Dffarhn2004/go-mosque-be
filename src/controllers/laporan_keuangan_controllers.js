@@ -144,19 +144,16 @@ exports.generateLabaRugiFromJurnal = async (req, res) => {
 
 /**
  * GET /laporan-keuangan/jurnal/perubahan-aset-neto - Generate Perubahan Ekuitas dari jurnal
- * Query params: tanggalAwal (required), tanggalAkhir (required)
+ * Query params: tahun (required, YYYY)
  */
 exports.generatePerubahanEkuitasFromJurnal = async (req, res) => {
   try {
-    const { tanggalAwal, tanggalAkhir } = req.query;
+    const { tahun } = req.query;
     const userId = req.user.id;
 
-    if (!tanggalAwal || !tanggalAkhir) {
-      return errorResponse(
-        res,
-        "tanggalAwal and tanggalAkhir are required",
-        400
-      );
+    const yearNumber = Number(tahun);
+    if (!tahun || Number.isNaN(yearNumber) || `${yearNumber}`.length !== 4) {
+      return errorResponse(res, "tahun (YYYY) is required", 400);
     }
 
     // Get user's masjidId
@@ -169,11 +166,14 @@ exports.generatePerubahanEkuitasFromJurnal = async (req, res) => {
       return errorResponse(res, "User does not belong to any masjid", 403);
     }
 
+    const tanggalAwal = new Date(`${yearNumber}-01-01T00:00:00.000Z`);
+    const tanggalAkhir = new Date(`${yearNumber}-12-31T23:59:59.999Z`);
+
     const perubahanEkuitas =
       await laporanKeuanganService.generatePerubahanEkuitasFromJurnal(
         user.masjidId,
-        new Date(tanggalAwal),
-        new Date(tanggalAkhir)
+        tanggalAwal,
+        tanggalAkhir
       );
 
     successResponse(
@@ -297,25 +297,30 @@ exports.generateLabaRugiFromJurnalPublic = async (req, res) => {
 
 /**
  * GET /laporan-keuangan/public/jurnal/perubahan-aset-neto - Generate Perubahan Ekuitas untuk public user
- * Query params: masjidId (required), tanggalAwal (required), tanggalAkhir (required)
+ * Query params: masjidId (required), tahun (required, YYYY)
  */
 exports.generatePerubahanEkuitasFromJurnalPublic = async (req, res) => {
   try {
-    const { masjidId, tanggalAwal, tanggalAkhir } = req.query;
+    const { masjidId, tahun } = req.query;
 
-    if (!masjidId || !tanggalAwal || !tanggalAkhir) {
-      return errorResponse(
-        res,
-        "masjidId, tanggalAwal and tanggalAkhir are required",
-        400
-      );
+    const yearNumber = Number(tahun);
+    if (
+      !masjidId ||
+      !tahun ||
+      Number.isNaN(yearNumber) ||
+      `${yearNumber}`.length !== 4
+    ) {
+      return errorResponse(res, "masjidId and tahun (YYYY) are required", 400);
     }
+
+    const tanggalAwal = new Date(`${yearNumber}-01-01T00:00:00.000Z`);
+    const tanggalAkhir = new Date(`${yearNumber}-12-31T23:59:59.999Z`);
 
     const perubahanEkuitas =
       await laporanKeuanganService.generatePerubahanEkuitasFromJurnal(
         masjidId,
-        new Date(tanggalAwal),
-        new Date(tanggalAkhir)
+        tanggalAwal,
+        tanggalAkhir
       );
 
     successResponse(

@@ -1125,8 +1125,7 @@ Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `tanggalAwal` (required): ISO date string atau date string (YYYY-MM-DD) - Tanggal awal periode
-- `tanggalAkhir` (required): ISO date string atau date string (YYYY-MM-DD) - Tanggal akhir periode
+- `tahun` (required): angka 4 digit, contoh `2024`. Backend otomatis menetapkan `tanggalAwal=01-01-tahun` dan `tanggalAkhir=31-12-tahun`.
 
 **Response:**
 ```json
@@ -1267,10 +1266,7 @@ Authorization: Bearer <token>
 **Contoh Request (Frontend):**
 ```javascript
 const response = await axiosInstance.get('/laporan-keuangan/jurnal/perubahan-aset-neto', {
-  params: {
-    tanggalAwal: '2024-01-01',
-    tanggalAkhir: '2024-12-31'
-  }
+  params: { tahun: 2024 }
 });
 ```
 

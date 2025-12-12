@@ -248,10 +248,18 @@ async function createAccount(accountData) {
 }
 
 /**
- * Get next available account code based on parent and masjidId
+ * Get next available account code based on parent and masjidId.
+ * Kebijakan penomoran:
+ * - Untuk detail akun: gunakan kode numerik tanpa titik.
+ * - Prefix diambil dari parent.code tanpa titik.
+ * - Jika ada sibling, ambil max numeric (tanpa titik) yang prefix-nya sama, lalu +1 dengan zero-pad panjang sibling terpanjang.
+ * - Jika belum ada sibling, mulai dari prefix + "01" lalu zero-pad minimal 6 digit.
+ * Contoh:
+ *   parent.code = "3.1.1", siblings: 311101, 311102 -> next = 311103
+ *   parent.code = "4.4", siblings kosong -> prefix "44" -> start "440101" (6 digit)
  * @param {string} parentId - Parent account ID
  * @param {string|null} masjidId - Masjid ID (null for default accounts)
- * @returns {Promise<string>} Next available code (e.g., "1.1.1.003")
+ * @returns {Promise<string>} Next available code (numeric string)
  */
 async function getNextAccountCode(parentId, masjidId) {
   try {
@@ -282,30 +290,52 @@ async function getNextAccountCode(parentId, masjidId) {
       orderBy: { code: "asc" },
     });
 
-    // 3. Extract sequential numbers dari codes
-    const parentCodePrefix = parent.code + ".";
-    const numbers = siblings
-      .map((sibling) => {
-        if (sibling.code.startsWith(parentCodePrefix)) {
-          const numStr = sibling.code.substring(parentCodePrefix.length);
-          const num = parseInt(numStr, 10);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter((n) => n > 0)
-      .sort((a, b) => b - a);
-
-    // 4. Generate next number (3 digit, zero-padded)
-    const nextNum = numbers.length > 0 ? numbers[0] + 1 : 1;
-    if (nextNum > 999) {
-      throw new CustomError(
-        "Maximum accounts per parent reached (999)",
-        400
-      );
+    // 3. Normalisasi prefix (hapus titik)
+    const parentPrefix = (parent.code || "").replace(/\./g, "");
+    if (!parentPrefix) {
+      throw new CustomError("Invalid parent code", 400);
     }
 
-    return `${parent.code}.${String(nextNum).padStart(3, "0")}`;
+    // 4. Ambil sibling codes numeric (hapus titik)
+    const siblingNums = siblings
+      .map((s) => (s.code || "").replace(/\./g, ""))
+      .filter((c) => c.startsWith(parentPrefix))
+      .map((c) => parseInt(c, 10))
+      .filter((n) => !Number.isNaN(n));
+
+    const maxSiblingLen =
+      siblings.length > 0
+        ? Math.max(...siblingNums.map((n) => String(n).length))
+        : 0;
+
+    // 5. Tentukan panjang target (minimal 6 digit agar konsisten dengan template default)
+    const targetLength = Math.max(
+      maxSiblingLen || 0,
+      parentPrefix.length + 2,
+      6
+    );
+
+    // 6. Hitung next number
+    const maxNum = siblingNums.length > 0 ? Math.max(...siblingNums) : 0;
+    const seedNum = parseInt(`${parentPrefix}01`.padEnd(targetLength, "1"), 10); // gunakan "01" lalu pad untuk memastikan panjang
+    const nextNum = maxNum > 0 ? maxNum + 1 : seedNum;
+
+    const nextCode = String(nextNum).padStart(targetLength, "0");
+
+    // 7. Pastikan unik untuk masjidId ini
+    const existing = await prisma.account.findUnique({
+      where: {
+        code_masjidId: {
+          code: nextCode,
+          masjidId: masjidId || null,
+        },
+      },
+    });
+    if (existing) {
+      throw new CustomError("Generated code already exists, retry", 400);
+    }
+
+    return nextCode;
   } catch (error) {
     console.error("Error getting next account code:", error);
     if (error instanceof CustomError) throw error;

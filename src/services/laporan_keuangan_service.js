@@ -108,11 +108,18 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
     let totalEkuitasTanpa = 0;
     let totalEkuitasDengan = 0;
 
-    Object.values(balances).forEach(({ account, tanpaPembatasan, denganPembatasan, saldo }) => {
-      if (saldo === 0) return; // Skip zero balance
+    // Filter accounts yang harus ditampilkan di neraca (report = NERACA dan bukan group)
+    const neracaAccounts = accounts.filter(
+      (acc) => acc.report === "NERACA" && (acc.type === "ASSET" || acc.type === "LIABILITY" || acc.type === "EQUITY")
+    );
 
-      // Filter hanya akun dengan report = NERACA
-      if (account.report !== "NERACA") return;
+    // Process semua akun neraca, termasuk yang saldonya 0
+    neracaAccounts.forEach((account) => {
+      // Get balance dari balances object, default ke 0 jika tidak ada
+      const balanceData = balances[account.id];
+      const tanpaPembatasan = balanceData?.tanpaPembatasan || 0;
+      const denganPembatasan = balanceData?.denganPembatasan || 0;
+      const saldo = balanceData?.saldo || 0;
 
       const accountData = {
         id: account.id,
@@ -175,16 +182,15 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
             saldo: 0,
           };
         }
-        if (Number(tanpaPembatasan) !== 0) {
-          ekuitas[kategoriTanpa].push({
-            ...accountData,
-            tanpaPembatasan: Number(tanpaPembatasan),
-            denganPembatasan: 0,
-            saldo: Number(tanpaPembatasan),
-          });
-          subtotalEkuitas[kategoriTanpa].tanpaPembatasan += Number(tanpaPembatasan);
-          subtotalEkuitas[kategoriTanpa].saldo += Number(tanpaPembatasan);
-        }
+        // Tampilkan semua akun ekuitas, termasuk yang saldonya 0
+        ekuitas[kategoriTanpa].push({
+          ...accountData,
+          tanpaPembatasan: Number(tanpaPembatasan),
+          denganPembatasan: 0,
+          saldo: Number(tanpaPembatasan),
+        });
+        subtotalEkuitas[kategoriTanpa].tanpaPembatasan += Number(tanpaPembatasan);
+        subtotalEkuitas[kategoriTanpa].saldo += Number(tanpaPembatasan);
         
         // Kategori "Dengan Pembatasan" - hanya ambil denganPembatasan
         const kategoriDengan = "Dengan Pembatasan dari Pemberi Sumber Daya";
@@ -196,16 +202,15 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
             saldo: 0,
           };
         }
-        if (Number(denganPembatasan) !== 0) {
-          ekuitas[kategoriDengan].push({
-            ...accountData,
-            tanpaPembatasan: 0,
-            denganPembatasan: Number(denganPembatasan),
-            saldo: Number(denganPembatasan),
-          });
-          subtotalEkuitas[kategoriDengan].denganPembatasan += Number(denganPembatasan);
-          subtotalEkuitas[kategoriDengan].saldo += Number(denganPembatasan);
-        }
+        // Tampilkan semua akun ekuitas, termasuk yang saldonya 0
+        ekuitas[kategoriDengan].push({
+          ...accountData,
+          tanpaPembatasan: 0,
+          denganPembatasan: Number(denganPembatasan),
+          saldo: Number(denganPembatasan),
+        });
+        subtotalEkuitas[kategoriDengan].denganPembatasan += Number(denganPembatasan);
+        subtotalEkuitas[kategoriDengan].saldo += Number(denganPembatasan);
         
         totalEkuitasTanpa += Number(tanpaPembatasan);
         totalEkuitasDengan += Number(denganPembatasan);

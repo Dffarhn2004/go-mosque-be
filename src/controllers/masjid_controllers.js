@@ -60,6 +60,46 @@ exports.getMasjidUser = async (req, res) => {
   }
 };
 
+// Get list of masjid (public endpoint)
+exports.getMasjidList = async (req, res) => {
+  try {
+    const { limit, offset, search } = req.query;
+
+    // Validate query parameters
+    const limitNum = limit ? parseInt(limit) : undefined;
+    const offsetNum = offset ? parseInt(offset) : 0;
+
+    if (limit && (isNaN(limitNum) || limitNum < 1)) {
+      return errorResponse(res, "Parameter limit harus berupa angka positif", 400);
+    }
+
+    if (offset && (isNaN(offsetNum) || offsetNum < 0)) {
+      return errorResponse(res, "Parameter offset harus berupa angka non-negatif", 400);
+    }
+
+    const result = await masjidService.getMasjidList({
+      limit: limitNum,
+      offset: offsetNum,
+      search: search || undefined,
+    });
+
+    // Return response sesuai dokumentasi API
+    return res.status(200).json({
+      status: "success",
+      message: "Data masjid berhasil diambil",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Error in getMasjidList:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Gagal memuat data masjid",
+      error: error.message,
+    });
+  }
+};
+
 // Update Masjid by ID
 exports.updateMasjid = async (req, res) => {
   try {

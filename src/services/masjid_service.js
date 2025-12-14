@@ -202,8 +202,90 @@ async function updateMasjidFull(idMasjid, p, fileFields) {
   }
 }
 
+// Get list of masjid with pagination and search
+async function getMasjidList(options = {}) {
+  try {
+    const { limit, offset = 0, search } = options;
+
+    // Build where clause for search
+    const whereClause = {};
+    if (search) {
+      whereClause.OR = [
+        { Nama: { contains: search, mode: "insensitive" } },
+        { Deskripsi: { contains: search, mode: "insensitive" } },
+        { Alamat: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Get total count for pagination
+    const total = await prisma.masjid.count({ where: whereClause });
+
+    // Build query options
+    const queryOptions = {
+      where: whereClause,
+      orderBy: { id: "desc" }, // Order by id descending (newest first)
+      select: {
+        id: true,
+        Nama: true,
+        Deskripsi: true,
+        Alamat: true,
+        NomorTelepon: true,
+        FotoLuarMasjid: true,
+      },
+    };
+
+    // Add pagination if limit is provided
+    if (limit) {
+      queryOptions.take = parseInt(limit);
+      queryOptions.skip = parseInt(offset);
+    }
+
+    // Fetch masjid data
+    const masjidList = await prisma.masjid.findMany(queryOptions);
+
+    // Transform data to match API documentation format
+    const transformedData = masjidList.map((masjid) => ({
+      id: masjid.id,
+      Nama: masjid.Nama,
+      Deskripsi: masjid.Deskripsi || null,
+      Alamat: masjid.Alamat,
+      FotoMasjid: masjid.FotoLuarMasjid && masjid.FotoLuarMasjid.length > 0
+        ? masjid.FotoLuarMasjid[0]
+        : null,
+      NoTelepon: masjid.NomorTelepon || null,
+      Email: null, // Not in schema
+      Website: null, // Not in schema
+      Latitude: null, // Not in schema
+      Longitude: null, // Not in schema
+      CreatedAt: null, // Not in schema
+      UpdatedAt: null, // Not in schema
+    }));
+
+    // Calculate pagination info
+    const limitNum = limit ? parseInt(limit) : total;
+    const offsetNum = parseInt(offset);
+    const totalPages = limit && limitNum > 0 ? Math.ceil(total / limitNum) : 1;
+    const currentPage = limit && limitNum > 0 ? Math.floor(offsetNum / limitNum) + 1 : 1;
+
+    return {
+      data: transformedData,
+      pagination: {
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        totalPages,
+        currentPage,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching masjid list:", error);
+    throw new Error("Gagal memuat data masjid");
+  }
+}
+
 module.exports = {
   getMasjidById,
   updateMasjid,
   updateMasjidFull,
+  getMasjidList,
 };

@@ -7,6 +7,8 @@ const { default: upload } = require("../utils/multer");
 const masjidRoute = express.Router();
 
 // Routes
+// Public endpoint - harus ditempatkan sebelum route /:id
+masjidRoute.get("/", masjidController.getMasjidList);
 masjidRoute.get("/takmir", authenticateJWT, masjidController.getMasjid);
 masjidRoute.get("/:id", masjidController.getMasjidUser);
 masjidRoute.patch(

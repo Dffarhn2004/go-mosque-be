@@ -18,13 +18,29 @@ async function registerUser(userData) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
+      // Cari role "Donatur" atau buat jika belum ada
+      let donaturRole = await tx.role.findFirst({
+        where: { Nama: "Donatur" },
+      });
+
+      if (!donaturRole) {
+        // Jika tidak ada, gunakan ID default dari seed
+        donaturRole = await tx.role.findUnique({
+          where: { id: "cmb6vlo570001vgzgsq1p0c42" },
+        });
+      }
+
+      if (!donaturRole) {
+        throw new CustomError("Donatur role not found. Please run seed first.", 500);
+      }
+
       // Buat user
       const user = await tx.user.create({
         data: {
           NamaLengkap: username,
           Email: email,
           Password: hashedPassword,
-          roleId: "cmb6vlhw90000vgzgp1odbfwv", // Default role, can be changed later
+          roleId: donaturRole.id,
         },
       });
 

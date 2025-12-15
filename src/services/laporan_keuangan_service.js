@@ -85,9 +85,10 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
       tanggalDate
     );
     
-    // Override saldo "Aset Neto Tahun Berjalan" dengan hasil dari Laporan Penghasilan Komprehensif
-    // Menentukan tahun berjalan dari tanggal laporan
+    // Override saldo "Aset Neto Tahun Lalu" dan "Aset Neto Tahun Berjalan" dengan hasil perhitungan
+    // Menentukan tahun berjalan dan tahun sebelumnya dari tanggal laporan
     const tahunBerjalan = new Date(tanggal).getFullYear();
+    const tahunSebelumnya = tahunBerjalan - 1;
     const tanggalAwalTahun = new Date(`${tahunBerjalan}-01-01T00:00:00.000Z`);
     // Hitung laba rugi dari awal tahun sampai tanggal laporan (bukan sampai akhir tahun)
     // Ini memastikan "Aset Neto Tahun Berjalan" menunjukkan akumulasi laba rugi dari awal tahun
@@ -100,9 +101,80 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
       tanggalAkhirPeriode
     );
     
+    // Hitung "Aset Neto Tahun Lalu" = saldo akhir ekuitas tahun sebelumnya
+    // Menggunakan logika yang sama dengan generatePerubahanEkuitasFromJurnal
+    const tanggalAkhirTahunSebelumnya = new Date(`${tahunSebelumnya}-12-31T23:59:59.999Z`);
+    const balancesTahunSebelumnya = await jurnalService.calculateAccountBalancesByRestriction(
+      masjidId,
+      tanggalAkhirTahunSebelumnya
+    );
+    
+    // Hitung laba rugi kumulatif sampai akhir tahun sebelumnya
+    const labaRugiKumulatifTahunSebelumnya = await generateLabaRugiFromJurnal(
+      masjidId,
+      new Date("1900-01-01"),
+      tanggalAkhirTahunSebelumnya
+    );
+    
+    // Get ekuitas accounts untuk menghitung saldo akhir tahun sebelumnya
+    const ekuitasAccounts = allAccounts.filter(
+      (acc) => !acc.isGroup && acc.type === "EQUITY"
+    );
+    
+    // Hitung saldo akhir ekuitas tahun sebelumnya (sama seperti di generatePerubahanEkuitasFromJurnal)
+    const saldoAkhirEkuitasTahunSebelumnyaTanpa =
+      ekuitasAccounts.reduce((total, acc) => {
+        const balance = balancesTahunSebelumnya[acc.id];
+        const value = Number(balance?.tanpaPembatasan) || 0;
+        return total + value;
+      }, 0) + (labaRugiKumulatifTahunSebelumnya.labaRugiTanpa || 0);
+
+    const saldoAkhirEkuitasTahunSebelumnyaDengan =
+      ekuitasAccounts.reduce((total, acc) => {
+        const balance = balancesTahunSebelumnya[acc.id];
+        const value = Number(balance?.denganPembatasan) || 0;
+        return total + value;
+      }, 0) + (labaRugiKumulatifTahunSebelumnya.labaRugiDengan || 0);
+    
+    // Cari akun "Aset Neto Tahun Lalu" (311101 dan 321101)
+    const asetNetoTahunLaluTanpa = allAccounts.find(acc => acc.code === "311101");
+    const asetNetoTahunLaluDengan = allAccounts.find(acc => acc.code === "321101");
+    
     // Cari akun "Aset Neto Tahun Berjalan" (312101 dan 322101)
     const asetNetoTahunBerjalanTanpa = allAccounts.find(acc => acc.code === "312101");
     const asetNetoTahunBerjalanDengan = allAccounts.find(acc => acc.code === "322101");
+    
+    // Override saldo untuk akun "Aset Neto Tahun Lalu" dengan saldo akhir ekuitas tahun sebelumnya
+    // Ini memastikan nilai selalu sesuai dengan konsep akuntansi
+    if (asetNetoTahunLaluTanpa) {
+      if (!balances[asetNetoTahunLaluTanpa.id]) {
+        balances[asetNetoTahunLaluTanpa.id] = {
+          account: asetNetoTahunLaluTanpa,
+          tanpaPembatasan: 0,
+          denganPembatasan: 0,
+          saldo: 0,
+        };
+      }
+      balances[asetNetoTahunLaluTanpa.id].tanpaPembatasan = saldoAkhirEkuitasTahunSebelumnyaTanpa || 0;
+      balances[asetNetoTahunLaluTanpa.id].denganPembatasan = 0;
+      balances[asetNetoTahunLaluTanpa.id].saldo = saldoAkhirEkuitasTahunSebelumnyaTanpa || 0;
+      console.log(`DEBUG - Override Aset Neto Tahun Lalu (Tanpa Pembatasan): ${saldoAkhirEkuitasTahunSebelumnyaTanpa}`);
+    }
+    
+    if (asetNetoTahunLaluDengan) {
+      if (!balances[asetNetoTahunLaluDengan.id]) {
+        balances[asetNetoTahunLaluDengan.id] = {
+          account: asetNetoTahunLaluDengan,
+          tanpaPembatasan: 0,
+          denganPembatasan: 0,
+          saldo: 0,
+        };
+      }
+      balances[asetNetoTahunLaluDengan.id].tanpaPembatasan = 0;
+      balances[asetNetoTahunLaluDengan.id].denganPembatasan = saldoAkhirEkuitasTahunSebelumnyaDengan || 0;
+      balances[asetNetoTahunLaluDengan.id].saldo = saldoAkhirEkuitasTahunSebelumnyaDengan || 0;
+      console.log(`DEBUG - Override Aset Neto Tahun Lalu (Dengan Pembatasan): ${saldoAkhirEkuitasTahunSebelumnyaDengan}`);
+    }
     
     // Override saldo untuk akun "Aset Neto Tahun Berjalan" dengan hasil dari Laporan Penghasilan Komprehensif
     // Ini memastikan nilai selalu sesuai dengan konsep akuntansi: Aset Neto Tahun Berjalan = Surplus/Defisit
@@ -136,14 +208,6 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
       console.log(`DEBUG - Override Aset Neto Tahun Berjalan (Dengan Pembatasan): ${labaRugiTahunBerjalan.labaRugiDengan}`);
     }
     
-    // Debug: log untuk melihat total DEBIT dan KREDIT
-    console.log('DEBUG - Neraca Calculation:');
-    console.log('  - Tanggal laporan:', tanggal);
-    console.log('  - Tanggal dengan timezone:', tanggalDate.toISOString());
-    console.log('  - Tahun berjalan:', tahunBerjalan);
-    console.log('  - Laba rugi tahun berjalan (Tanpa):', labaRugiTahunBerjalan.labaRugiTanpa);
-    console.log('  - Laba rugi tahun berjalan (Dengan):', labaRugiTahunBerjalan.labaRugiDengan);
-    console.log('  - Jumlah akun dengan saldo:', Object.keys(balances).filter(key => balances[key].saldo !== 0).length);
 
     // Group by type and kategori, separated by restriction
     const aset = {};

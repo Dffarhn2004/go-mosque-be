@@ -144,6 +144,36 @@ exports.getNextAccountCode = async (req, res) => {
 };
 
 /**
+ * GET /coa/valid-parents - Get valid parent accounts (group accounts that can have detail accounts)
+ * Query params: masjidId (optional)
+ */
+exports.getValidParents = async (req, res) => {
+  try {
+    const { masjidId } = req.query;
+    const userId = req.user.id;
+
+    // Get user's masjidId if not provided
+    let targetMasjidId = masjidId;
+    if (!targetMasjidId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { masjidId: true },
+      });
+      targetMasjidId = user?.masjidId || null;
+    }
+
+    const validParents = await accountService.getValidParents(targetMasjidId || null);
+    successResponse(res, "Valid parents fetched successfully", validParents);
+  } catch (err) {
+    console.error("Error in getValidParents:", err);
+    if (err instanceof CustomError) {
+      return errorResponse(res, err.message, err.statusCode);
+    }
+    errorResponse(res, "Failed to fetch valid parents: " + err.message);
+  }
+};
+
+/**
  * POST /coa - Create new account
  */
 exports.createAccount = async (req, res) => {

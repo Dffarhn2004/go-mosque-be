@@ -19,6 +19,9 @@ accountRouter.get("/tree", accountController.getAccountTree);
 // GET /coa/next-code - Get next available account code
 accountRouter.get("/next-code", accountController.getNextAccountCode);
 
+// GET /coa/valid-parents - Get valid parent accounts (group accounts that can have detail accounts)
+accountRouter.get("/valid-parents", accountController.getValidParents);
+
 // GET /coa/:id - Get account by ID
 accountRouter.get("/:id", accountController.getAccountById);
 

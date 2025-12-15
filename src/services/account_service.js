@@ -115,6 +115,37 @@ async function getAccountTree(masjidId = null) {
 }
 
 /**
+ * Get valid parent accounts (group accounts that can have detail accounts as children)
+ * Valid parent = group account (isGroup = true) that does NOT have group children
+ * @param {string|null} masjidId - Masjid ID (null untuk default/global)
+ * @returns {Promise<Array>} Array of valid parent accounts
+ */
+async function getValidParents(masjidId = null) {
+  try {
+    // Get all accounts
+    const allAccounts = await getAllAccounts(masjidId, false);
+    
+    // Filter: only group accounts (isGroup = true)
+    const groupAccounts = allAccounts.filter(acc => acc.isGroup === true);
+    
+    // Filter: only group accounts that do NOT have group children
+    const validParents = groupAccounts.filter(parent => {
+      // Check if parent has any children that are also group accounts
+      const hasGroupChildren = allAccounts.some(
+        child => child.parentId === parent.id && child.isGroup === true
+      );
+      // Valid parent = does NOT have group children (can only have detail accounts)
+      return !hasGroupChildren;
+    });
+    
+    return validParents;
+  } catch (error) {
+    console.error("Error getting valid parents:", error);
+    throw new Error("Failed to get valid parents");
+  }
+}
+
+/**
  * Create new account
  * @param {Object} accountData - Account data
  * @returns {Promise<Object>} Created account
@@ -798,6 +829,7 @@ async function seedDefaultCOA(masjidId = null) {
 }
 
 module.exports = {
+  getValidParents,
   getAllAccounts,
   getAccountById,
   getAccountTree,

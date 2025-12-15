@@ -85,10 +85,64 @@ async function generateNeracaFromJurnal(masjidId, tanggal) {
       tanggalDate
     );
     
+    // Override saldo "Aset Neto Tahun Berjalan" dengan hasil dari Laporan Penghasilan Komprehensif
+    // Menentukan tahun berjalan dari tanggal laporan
+    const tahunBerjalan = new Date(tanggal).getFullYear();
+    const tanggalAwalTahun = new Date(`${tahunBerjalan}-01-01T00:00:00.000Z`);
+    // Hitung laba rugi dari awal tahun sampai tanggal laporan (bukan sampai akhir tahun)
+    // Ini memastikan "Aset Neto Tahun Berjalan" menunjukkan akumulasi laba rugi dari awal tahun
+    const tanggalAkhirPeriode = new Date(tanggalDate); // Gunakan tanggalDate yang sudah di-set ke akhir hari
+    
+    // Hitung laba rugi tahun berjalan (dari awal tahun sampai tanggal laporan)
+    const labaRugiTahunBerjalan = await generateLabaRugiFromJurnal(
+      masjidId,
+      tanggalAwalTahun,
+      tanggalAkhirPeriode
+    );
+    
+    // Cari akun "Aset Neto Tahun Berjalan" (312101 dan 322101)
+    const asetNetoTahunBerjalanTanpa = allAccounts.find(acc => acc.code === "312101");
+    const asetNetoTahunBerjalanDengan = allAccounts.find(acc => acc.code === "322101");
+    
+    // Override saldo untuk akun "Aset Neto Tahun Berjalan" dengan hasil dari Laporan Penghasilan Komprehensif
+    // Ini memastikan nilai selalu sesuai dengan konsep akuntansi: Aset Neto Tahun Berjalan = Surplus/Defisit
+    if (asetNetoTahunBerjalanTanpa) {
+      if (!balances[asetNetoTahunBerjalanTanpa.id]) {
+        balances[asetNetoTahunBerjalanTanpa.id] = {
+          account: asetNetoTahunBerjalanTanpa,
+          tanpaPembatasan: 0,
+          denganPembatasan: 0,
+          saldo: 0,
+        };
+      }
+      balances[asetNetoTahunBerjalanTanpa.id].tanpaPembatasan = labaRugiTahunBerjalan.labaRugiTanpa || 0;
+      balances[asetNetoTahunBerjalanTanpa.id].denganPembatasan = 0;
+      balances[asetNetoTahunBerjalanTanpa.id].saldo = labaRugiTahunBerjalan.labaRugiTanpa || 0;
+      console.log(`DEBUG - Override Aset Neto Tahun Berjalan (Tanpa Pembatasan): ${labaRugiTahunBerjalan.labaRugiTanpa}`);
+    }
+    
+    if (asetNetoTahunBerjalanDengan) {
+      if (!balances[asetNetoTahunBerjalanDengan.id]) {
+        balances[asetNetoTahunBerjalanDengan.id] = {
+          account: asetNetoTahunBerjalanDengan,
+          tanpaPembatasan: 0,
+          denganPembatasan: 0,
+          saldo: 0,
+        };
+      }
+      balances[asetNetoTahunBerjalanDengan.id].tanpaPembatasan = 0;
+      balances[asetNetoTahunBerjalanDengan.id].denganPembatasan = labaRugiTahunBerjalan.labaRugiDengan || 0;
+      balances[asetNetoTahunBerjalanDengan.id].saldo = labaRugiTahunBerjalan.labaRugiDengan || 0;
+      console.log(`DEBUG - Override Aset Neto Tahun Berjalan (Dengan Pembatasan): ${labaRugiTahunBerjalan.labaRugiDengan}`);
+    }
+    
     // Debug: log untuk melihat total DEBIT dan KREDIT
     console.log('DEBUG - Neraca Calculation:');
     console.log('  - Tanggal laporan:', tanggal);
     console.log('  - Tanggal dengan timezone:', tanggalDate.toISOString());
+    console.log('  - Tahun berjalan:', tahunBerjalan);
+    console.log('  - Laba rugi tahun berjalan (Tanpa):', labaRugiTahunBerjalan.labaRugiTanpa);
+    console.log('  - Laba rugi tahun berjalan (Dengan):', labaRugiTahunBerjalan.labaRugiDengan);
     console.log('  - Jumlah akun dengan saldo:', Object.keys(balances).filter(key => balances[key].saldo !== 0).length);
 
     // Group by type and kategori, separated by restriction

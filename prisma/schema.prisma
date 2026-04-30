@@ -1,17 +1,12 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  output   = "../src/generated/prisma_runtime"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -19,66 +14,54 @@ model User {
   NamaLengkap String
   Email       String   @unique
   Password    String
+  isActive    Boolean  @default(true)
   CreatedAt   DateTime @default(now())
   UpdatedAt   DateTime @updatedAt
-
-  // Foreign Key
-  roleId   String
-  masjidId String? // Optional - hanya untuk role tertentu
-
-  // Relasi
-  role   Role     @relation(fields: [roleId], references: [id])
-  masjid Masjid?  @relation(fields: [masjidId], references: [id])
-  donasi Donasi[]
+  roleId      String
+  masjidId    String?
+  donasi      Donasi[]
+  auditLogs   AuditLog[]
+  updatedConfigs SystemConfig[] @relation("SystemConfigUpdatedBy")
+  masjid      Masjid?  @relation(fields: [masjidId], references: [id])
+  role        Role     @relation(fields: [roleId], references: [id])
 
   @@map("User")
 }
 
 model Role {
-  id   String @id @default(cuid())
-  Nama String
-
-  // Relasi
+  id    String @id @default(cuid())
+  Nama  String
   users User[]
 
   @@map("Role")
 }
 
-enum StatusKepemilikan {
-  MILIK_SENDIRI
-  TANAH_WAKAF
-  HIBAH
-  SEWA
-}
-
 model Masjid {
-  id                String             @id @default(cuid())
-  Nama              String
-  Alamat            String
-  NomorTelepon      String
-  TanggalBerdiri    DateTime?
-  StatusKepemilikan StatusKepemilikan?
-  LuasTanah         Float?
-  Kapasitas_Jamaah  Int?
-  Deskripsi         String?            @db.Text
-  Visi              String?            @db.Text
-  Misi              String?            @db.Text
-  FotoLuarMasjid    String[]           @default([]) // Array of strings for exterior photos
-  FotoDalamMasjid   String[]           @default([]) // Array of strings for interior photos
-  SuratIzinMasjid   String?
-  PenghargaanMasjid String[]           @default([]) // Array of strings for awards
-  SuratPengantar    String?
-
-  fasilitasMasjid Fasilitas_Masjid[]
-  kegiatanMasjid  Kegiatan_Masjid[]
-
-  laporanMasjid             LaporanKeuanganMasjid[]
-  // Relasi ke tabel lain
-  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
-  donasi_masjid             Donasi_Masjid[]
-  users                     User[] // Relasi balik dari User
+  id                        String                      @id @default(cuid())
+  Nama                      String
+  Alamat                    String
+  NomorTelepon              String
+  isActive                  Boolean                     @default(true)
+  TanggalBerdiri            DateTime?
+  LuasTanah                 Float?
+  Kapasitas_Jamaah          Int?
+  Deskripsi                 String?
+  Visi                      String?
+  Misi                      String?
+  FotoLuarMasjid            String[]                    @default([])
+  FotoDalamMasjid           String[]                    @default([])
+  SuratIzinMasjid           String?
+  SuratPengantar            String?
+  PenghargaanMasjid         String[]                    @default([])
+  StatusKepemilikan         StatusKepemilikan?
   accounts                  Account[]
+  donasi_masjid             Donasi_Masjid[]
+  fasilitasMasjid           Fasilitas_Masjid[]
   jurnalTransactions        JurnalTransaction[]
+  kegiatanMasjid            Kegiatan_Masjid[]
+  laporanMasjid             LaporanKeuanganMasjid[]
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+  users                     User[]
 
   @@map("Masjid")
 }
@@ -86,13 +69,200 @@ model Masjid {
 model LaporanKeuanganMasjid {
   id         String               @id @default(cuid())
   masjidId   String
-  masjid     Masjid               @relation(fields: [masjidId], references: [id])
   jenis      JenisLaporanKeuangan
-  fileUrl    String // URL atau path file
+  fileUrl    String
   uploadedAt DateTime             @default(now())
   fileSizeKB Int
+  masjid     Masjid               @relation(fields: [masjidId], references: [id])
 
   @@map("Laporan_Keuangan_Masjid")
+}
+
+model Fasilitas_Masjid {
+  id       String           @id @default(cuid())
+  Nama     String
+  Kondisi  KondisiFasilitas
+  masjidId String
+  masjid   Masjid           @relation(fields: [masjidId], references: [id])
+
+  @@map("Fasilitas_Masjid")
+}
+
+model Kegiatan_Masjid {
+  id          String   @id @default(cuid())
+  Nama        String
+  Dokumentasi String[] @default([])
+  masjidId    String
+  masjid      Masjid   @relation(fields: [masjidId], references: [id])
+
+  @@map("Kegiatan_Masjid")
+}
+
+model Kategori_Donasi {
+  id                        String                      @id @default(cuid())
+  Nama                      String
+  isActive                  Boolean                     @default(true)
+  donasi_masjid             Donasi_Masjid[]
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Kategori_Donasi")
+}
+
+model Kategori_Pengeluaran {
+  id                        String                      @id @default(cuid())
+  Nama                      String
+  isActive                  Boolean                     @default(true)
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Kategori_Pengeluaran")
+}
+
+model Donasi {
+  id               String        @id @default(cuid())
+  Nama             String
+  Keterangan       String?
+  JumlahDonasi     Decimal       @db.Decimal(15, 2)
+  StatusDonasi     StatusDonasi  @default(Pending)
+  CreatedAt        DateTime      @default(now())
+  id_donasi_masjid String
+  id_user          String
+  Email            String?
+  NoTelepon        String?
+  donasi_masjid    Donasi_Masjid @relation(fields: [id_donasi_masjid], references: [id])
+  user             User          @relation(fields: [id_user], references: [id])
+
+  @@map("Donasi")
+}
+
+model Donasi_Masjid {
+  id                        String                      @id @default(cuid())
+  Nama                      String
+  Deskripsi                 String?
+  TargetUangDonasi          Decimal                     @db.Decimal(15, 2)
+  UangDonasiTerkumpul       Decimal                     @default(0) @db.Decimal(15, 2)
+  UangPengeluaran           Decimal                     @default(0) @db.Decimal(15, 2)
+  id_masjid                 String
+  id_kategori_donasi        String
+  FotoDonasi                String?
+  CreatedAt                 DateTime                    @default(now())
+  donasi                    Donasi[]
+  kategori_donasi           Kategori_Donasi             @relation(fields: [id_kategori_donasi], references: [id])
+  masjid                    Masjid                      @relation(fields: [id_masjid], references: [id])
+  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+
+  @@map("Donasi_Masjid")
+}
+
+model Pengeluaran_Donasi_Masjid {
+  id                      String               @id @default(cuid())
+  TujuanPengeluaran       String
+  DeskripsiPengeluaran    String?
+  UangPengeluaran         Decimal              @db.Decimal(15, 2)
+  CreatedAt               DateTime             @default(now())
+  id_donasi_masjid        String
+  id_kategori_pengeluaran String
+  masjidId                String?
+  kategori_DonasiId       String?
+  FotoPengeluaran         String?
+  donasi_masjid           Donasi_Masjid        @relation(fields: [id_donasi_masjid], references: [id])
+  kategori_pengeluaran    Kategori_Pengeluaran @relation(fields: [id_kategori_pengeluaran], references: [id])
+  Kategori_Donasi         Kategori_Donasi?     @relation(fields: [kategori_DonasiId], references: [id])
+  Masjid                  Masjid?              @relation(fields: [masjidId], references: [id])
+
+  @@map("Pengeluaran_Donasi_Masjid")
+}
+
+model Account {
+  id            String              @id @default(cuid())
+  code          String
+  name          String
+  parentId      String?
+  type          AccountType
+  isGroup       Boolean             @default(false)
+  pathCode      String
+  masjidId      String?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  normalBalance NormalBalance
+  category      AccountCategory?
+  report        AccountReport?
+  restriction   AccountRestriction?
+  masjid        Masjid?             @relation(fields: [masjidId], references: [id])
+  parent        Account?            @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children      Account[]           @relation("AccountHierarchy")
+  jurnalEntries JurnalEntry[]
+
+  @@unique([code, masjidId])
+  @@map("Account")
+}
+
+model JurnalTransaction {
+  id         String        @id @default(cuid())
+  masjidId   String
+  tanggal    DateTime
+  keterangan String
+  referensi  String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  entries    JurnalEntry[]
+  masjid     Masjid        @relation(fields: [masjidId], references: [id])
+
+  @@map("JurnalTransaction")
+}
+
+model JurnalEntry {
+  id             String            @id @default(cuid())
+  transactionId  String
+  akunId         String
+  tipe           JurnalTipe
+  jumlah         Decimal           @db.Decimal(15, 2)
+  createdAt      DateTime          @default(now())
+  hasRestriction Boolean           @default(false)
+  keterangan     String?
+  akun           Account           @relation(fields: [akunId], references: [id])
+  transaction    JurnalTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("JurnalEntry")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  entityName String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("AuditLog")
+}
+
+model SystemConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           Json
+  description     String?  @db.Text
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  updatedByUser User? @relation("SystemConfigUpdatedBy", fields: [updatedByUserId], references: [id])
+
+  @@index([updatedByUserId])
+  @@map("SystemConfig")
+}
+
+enum StatusKepemilikan {
+  MILIK_SENDIRI
+  TANAH_WAKAF
+  HIBAH
+  SEWA
 }
 
 enum JenisLaporanKeuangan {
@@ -113,121 +283,9 @@ enum KondisiFasilitas {
   SANGAT_BAIK
 }
 
-model Fasilitas_Masjid {
-  id      String           @id @default(cuid())
-  Nama    String
-  Kondisi KondisiFasilitas
-
-  masjidId String // foreign key
-  masjid   Masjid @relation(fields: [masjidId], references: [id])
-
-  @@map("Fasilitas_Masjid")
-}
-
-model Kegiatan_Masjid {
-  id          String   @id @default(cuid())
-  Nama        String
-  Dokumentasi String[] @default([]) // Array of strings for documentation photos
-
-  masjidId String // foreign key
-  masjid   Masjid @relation(fields: [masjidId], references: [id])
-
-  @@map("Kegiatan_Masjid")
-}
-
-model Kategori_Donasi {
-  id   String @id @default(cuid())
-  Nama String
-
-  // Relasi
-  donasi_masjid             Donasi_Masjid[]
-  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
-
-  @@map("Kategori_Donasi")
-}
-
-model Kategori_Pengeluaran {
-  id   String @id @default(cuid())
-  Nama String
-
-  // Relasi
-  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
-
-  @@map("Kategori_Pengeluaran")
-}
-
 enum StatusDonasi {
   Pending
   Sukses
-}
-
-model Donasi {
-  id           String       @id @default(cuid())
-  Nama         String
-  Email        String?
-  NoTelepon    String?
-  Keterangan   String?      @db.Text
-  JumlahDonasi Decimal      @db.Decimal(15, 2)
-  StatusDonasi StatusDonasi @default(Pending)
-  CreatedAt    DateTime     @default(now())
-
-  // Foreign Keys
-  id_donasi_masjid String
-  id_user          String
-
-  // Relasi
-  donasi_masjid Donasi_Masjid @relation(fields: [id_donasi_masjid], references: [id])
-  user          User          @relation(fields: [id_user], references: [id])
-
-  @@map("Donasi")
-}
-
-model Donasi_Masjid {
-  id                  String   @id @default(cuid())
-  Nama                String
-  Deskripsi           String?  @db.Text
-  FotoDonasi          String?  @db.Text
-  TargetUangDonasi    Decimal  @db.Decimal(15, 2)
-  UangDonasiTerkumpul Decimal  @default(0) @db.Decimal(15, 2)
-  UangPengeluaran     Decimal  @default(0) @db.Decimal(15, 2)
-  CreatedAt           DateTime @default(now())
-
-  // Foreign Keys
-  id_masjid          String
-  id_kategori_donasi String
-
-  // Relasi
-  masjid          Masjid          @relation(fields: [id_masjid], references: [id])
-  kategori_donasi Kategori_Donasi @relation(fields: [id_kategori_donasi], references: [id])
-
-  // Relasi ke tabel lain
-  donasi                    Donasi[]
-  pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
-
-  @@map("Donasi_Masjid")
-}
-
-model Pengeluaran_Donasi_Masjid {
-  id                   String   @id @default(cuid())
-  TujuanPengeluaran    String
-  FotoPengeluaran      String?  @db.Text
-  DeskripsiPengeluaran String?  @db.Text
-  UangPengeluaran      Decimal  @db.Decimal(15, 2)
-  CreatedAt            DateTime @default(now())
-
-  // Foreign Keys
-  id_donasi_masjid        String
-  id_kategori_pengeluaran String
-
-  // Relasi
-  donasi_masjid        Donasi_Masjid        @relation(fields: [id_donasi_masjid], references: [id])
-  kategori_pengeluaran Kategori_Pengeluaran @relation(fields: [id_kategori_pengeluaran], references: [id])
-  Masjid               Masjid?              @relation(fields: [masjidId], references: [id])
-  masjidId             String?
-  Kategori_Donasi      Kategori_Donasi?     @relation(fields: [kategori_DonasiId], references: [id])
-  kategori_DonasiId    String?
-
-  @@map("Pengeluaran_Donasi_Masjid")
 }
 
 enum AccountType {
@@ -264,67 +322,7 @@ enum AccountCategory {
   PENGHASILAN_KOMPREHENSIF_LAIN
 }
 
-model Account {
-  id            String        @id @default(cuid())
-  code          String // Contoh: "1.1.1.01" atau "111101"
-  name          String // Nama akun
-  parentId      String? // Self-referencing untuk hierarchical
-  parent        Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children      Account[]     @relation("AccountHierarchy")
-  type          AccountType // Enum: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
-  normalBalance NormalBalance // DEBIT atau KREDIT - menentukan saldo normal akun
-  isGroup       Boolean       @default(false) // true = group/header, false = detail account
-  pathCode      String // Full path: "1.1.1.01" untuk tracking
-  masjidId      String? // NULL = default/global, NOT NULL = custom per masjid
-  isActive      Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  // Field baru untuk COA FINAL
-  restriction   AccountRestriction? // NULL untuk group, wajib untuk detail account
-  report        AccountReport? // NULL untuk group, wajib untuk detail account
-  category      AccountCategory? // NULL untuk group, wajib untuk detail account
-
-  // Relations
-  masjid        Masjid?       @relation(fields: [masjidId], references: [id])
-  jurnalEntries JurnalEntry[]
-
-  @@unique([code, masjidId]) // Kode unik per masjid (NULL dianggap sebagai satu group)
-  @@map("Account")
-}
-
 enum JurnalTipe {
   DEBIT
   KREDIT
-}
-
-model JurnalTransaction {
-  id         String   @id @default(cuid())
-  masjidId   String
-  tanggal    DateTime
-  keterangan String   @db.Text
-  referensi  String? // Opsional: link ke donasi/pengeluaran
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  masjid  Masjid        @relation(fields: [masjidId], references: [id])
-  entries JurnalEntry[]
-
-  @@map("JurnalTransaction")
-}
-
-model JurnalEntry {
-  id             String            @id @default(cuid())
-  transactionId  String
-  transaction    JurnalTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  akunId         String
-  akun           Account           @relation(fields: [akunId], references: [id])
-  tipe           JurnalTipe // DEBIT atau KREDIT
-  jumlah         Decimal           @db.Decimal(15, 2)
-  hasRestriction Boolean           @default(false) // true = Dengan Pembatasan dari Pemberi Sumber Daya, false = Tanpa Pembatasan
-  keterangan     String?           @db.Text // Keterangan untuk entry ini
-  createdAt      DateTime          @default(now())
-
-  @@map("JurnalEntry")
 }

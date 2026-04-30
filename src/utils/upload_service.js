@@ -1,96 +1,202 @@
-import { config } from "dotenv";
-import admin from "firebase-admin";
+const { config } = require("dotenv");
+const { createClient } = require("@supabase/supabase-js");
 
-config(); // Load .env variables
+config();
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-// console.log("Firebase service account loaded from environment variables");
-// console.log("Firebase service account:", serviceAccount);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const bucketName = process.env.SUPABASE_STORAGE_BUCKET;
+const isPublicBucket = process.env.SUPABASE_STORAGE_PUBLIC === "true";
+const signedUrlExpiresIn = parseInt(
+  process.env.SUPABASE_SIGNED_URL_EXPIRES_IN || "3600",
+  10
+);
 
-if (!serviceAccount) {
-  throw new Error(
-    "Firebase service account credentials not found in environment variables"
-  );
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL is not configured");
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: "gs://bekaspakaistorage.appspot.com",
+if (!supabaseServiceRoleKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+}
+
+if (!bucketName) {
+  throw new Error("SUPABASE_STORAGE_BUCKET is not configured");
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
 });
 
-const bucket = admin.storage().bucket();
+function sanitizeFileName(filename) {
+  return filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
 
-export async function FBuploadFiles(files, saveAt) {
+function buildObjectPath(saveAt, originalName) {
+  const sanitizedName = sanitizeFileName(originalName || "file");
+  return `${saveAt}/${Date.now()}_${sanitizedName}`;
+}
+
+function getPublicOrSignedUrl(objectPath) {
+  if (isPublicBucket) {
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
+    return data.publicUrl;
+  }
+
+  return supabase.storage
+    .from(bucketName)
+    .createSignedUrl(objectPath, signedUrlExpiresIn)
+    .then(({ data, error }) => {
+      if (error) throw error;
+      return data.signedUrl;
+    });
+}
+
+function extractObjectPath(value) {
+  if (!value) return null;
+
+  if (!/^https?:\/\//i.test(value)) {
+    return value.replace(/^\/+/, "");
+  }
+
+  try {
+    const parsed = new URL(value);
+    const marker = `/object/${isPublicBucket ? "public" : "sign"}/${bucketName}/`;
+    const index = parsed.pathname.indexOf(marker);
+
+    if (index >= 0) {
+      return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+    }
+
+    const fallbackMarker = `/${bucketName}/`;
+    const fallbackIndex = parsed.pathname.indexOf(fallbackMarker);
+    if (fallbackIndex >= 0) {
+      return decodeURIComponent(
+        parsed.pathname.slice(fallbackIndex + fallbackMarker.length)
+      );
+    }
+  } catch (error) {
+    console.error("Failed to parse storage URL:", error);
+  }
+
+  return null;
+}
+
+async function FBuploadFiles(files, saveAt) {
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error("No files provided for upload");
   }
 
   try {
-    const uploadPromises = files.map(async (file) => {
-      const { buffer, originalname } = file;
-      const firebaseFile = bucket.file(
-        `${saveAt}/${Date.now()}_${originalname}`
-      ); // Unique filename with timestamp
+    const uploadResults = await Promise.all(
+      files.map(async (file) => {
+        const objectPath = buildObjectPath(saveAt, file.originalname);
 
-      const stream = firebaseFile.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
+        const { error } = await supabase.storage.from(bucketName).upload(
+          objectPath,
+          file.buffer,
+          {
+            contentType: file.mimetype,
+            upsert: false,
+          }
+        );
 
-      // Handle the buffer stream and upload to Firebase
-      stream.end(buffer);
+        if (error) {
+          throw error;
+        }
 
-      return new Promise((resolve, reject) => {
-        stream.on("finish", async () => {
-          const url = await firebaseFile.getSignedUrl({
-            action: "read",
-            expires: "01-01-2030", // Customize expiration date as needed
-          });
-          resolve({
-            key: firebaseFile.name,
-            alt: `File description ${originalname}`, // Customize alt text as needed
-            url: url[0],
-          });
-        });
+        const url = await getPublicOrSignedUrl(objectPath);
 
-        stream.on("error", (error) => {
-          console.error("Upload error:", error);
-          reject(new Error("Firebase upload failed"));
-        });
-      });
-    });
+        return {
+          key: objectPath,
+          alt: `File description ${file.originalname}`,
+          url,
+        };
+      })
+    );
 
-    return await Promise.all(uploadPromises);
+    return uploadResults;
   } catch (error) {
-    console.error("Firebase upload error:", error);
-    throw new Error("Firebase upload failed");
+    console.error("Supabase upload error:", error);
+    throw new Error("Supabase upload failed");
   }
 }
 
-// Delete files from Firebase
-export async function FBdeleteFiles(keys) {
+async function FBdeleteFiles(keys) {
   try {
-    const deletePromises = keys.map(async (key) => {
-      const file = bucket.file(key);
-      await file.delete();
-    });
-    await Promise.all(deletePromises);
+    const objectPaths = (keys || [])
+      .map(extractObjectPath)
+      .filter(Boolean);
+
+    if (objectPaths.length === 0) {
+      return;
+    }
+
+    const { error } = await supabase.storage.from(bucketName).remove(objectPaths);
+    if (error) {
+      throw error;
+    }
   } catch (error) {
-    console.error("Firebase delete error:", error);
-    throw new Error("Firebase deletion failed");
+    console.error("Supabase delete error:", error);
+    throw new Error("Supabase deletion failed");
   }
 }
 
-// Delete all files in a folder path
-export async function FBdeleteAllFilesInPath(pathPrefix) {
+async function FBdeleteAllFilesInPath(pathPrefix) {
   try {
-    const [files] = await bucket.getFiles({ prefix: pathPrefix });
-    if (files.length === 0) return;
+    let offset = 0;
+    const pageSize = 100;
+    const objectPaths = [];
 
-    const deletePromises = files.map((file) => file.delete());
-    await Promise.all(deletePromises);
-    console.log(`Deleted all files in path: ${pathPrefix}`);
+    while (true) {
+      const { data, error } = await supabase.storage.from(bucketName).list(
+        pathPrefix,
+        {
+          limit: pageSize,
+          offset,
+        }
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      objectPaths.push(
+        ...data
+          .filter((item) => item.name)
+          .map((item) => `${pathPrefix}/${item.name}`)
+      );
+
+      if (data.length < pageSize) {
+        break;
+      }
+
+      offset += pageSize;
+    }
+
+    if (objectPaths.length === 0) {
+      return;
+    }
+
+    const { error } = await supabase.storage.from(bucketName).remove(objectPaths);
+    if (error) {
+      throw error;
+    }
   } catch (error) {
     console.error(`Error deleting files in path "${pathPrefix}":`, error);
     throw new Error("Failed to delete existing files before upload.");
   }
 }
+
+module.exports = {
+  FBuploadFiles,
+  FBdeleteFiles,
+  FBdeleteAllFilesInPath,
+};

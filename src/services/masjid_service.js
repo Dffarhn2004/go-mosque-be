@@ -208,7 +208,7 @@ async function getMasjidList(options = {}) {
     const { limit, offset = 0, search } = options;
 
     // Build where clause for search
-    const whereClause = {};
+    const whereClause = { isActive: true };
     if (search) {
       whereClause.OR = [
         { Nama: { contains: search, mode: "insensitive" } },

@@ -13,7 +13,7 @@ exports.getAllDonasiMasjid = async (req, res) => {
     });
 
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(res, "User not found", 404);
     }
 
     if (!user.masjidId) {
@@ -59,7 +59,7 @@ exports.getDonasiMasjid = async (req, res) => {
     });
 
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(res, "User not found", 404);
     }
 
     if (!user.masjidId) {
@@ -107,7 +107,7 @@ exports.createDonasiMasjid = async (req, res) => {
     });
 
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(res, "User not found", 404);
     }
 
     if (!user.masjidId) {

@@ -2,7 +2,10 @@ const prisma = require("../utils/prisma_client");
 
 
 async function getAllKategoriPengeluaranDonasi() {
-    return await prisma.kategori_Pengeluaran.findMany();
+    return await prisma.kategori_Pengeluaran.findMany({
+        where: { isActive: true },
+        orderBy: { Nama: "asc" },
+    });
 }
 
 async function createKategoriPengeluaranDonasi(data) {

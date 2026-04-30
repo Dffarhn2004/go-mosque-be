@@ -68,12 +68,37 @@ async function getDonasi(idDonasi, idUser) {
 }
 
 async function createDonasi(data) {
-  // Step 1: Create donasi first (without thumbnail)
-  const createdDonasi = await prisma.donasi.create({
-    data: data,
-  });
+  const donationAmount = new Decimal(data.JumlahDonasi);
 
-  return createdDonasi;
+  return await prisma.$transaction(async (tx) => {
+    const targetDonasiMasjid = await tx.donasi_Masjid.findUnique({
+      where: { id: data.id_donasi_masjid },
+    });
+
+    if (!targetDonasiMasjid) {
+      throw new Error("Donasi masjid tidak ditemukan");
+    }
+
+    const createdDonasi = await tx.donasi.create({
+      data: {
+        ...data,
+        JumlahDonasi: donationAmount,
+      },
+    });
+
+    if (data.StatusDonasi === "Sukses") {
+      await tx.donasi_Masjid.update({
+        where: { id: data.id_donasi_masjid },
+        data: {
+          UangDonasiTerkumpul: {
+            increment: donationAmount,
+          },
+        },
+      });
+    }
+
+    return createdDonasi;
+  });
 }
 
 module.exports = {

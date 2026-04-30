@@ -106,12 +106,17 @@ async function loginUser(email, password) {
     const user = await prisma.user.findUnique({
       where: { Email: email },
       include:{
-        masjid:true
+        masjid:true,
+        role: true,
       }
     });
 
     if (!user) {
       throw new CustomError("Invalid email or password", 401);
+    }
+
+    if (user.isActive === false) {
+      throw new CustomError("User account is inactive", 403);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.Password);

@@ -140,9 +140,11 @@ async function loginUser(email, password) {
       },
     };
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("[LOGIN ERROR] name:", error.name);
+    console.error("[LOGIN ERROR] message:", error.message);
+    console.error("[LOGIN ERROR] stack:", error.stack);
     if (error instanceof CustomError) throw error;
-    throw new Error("Login failed");
+    throw new Error("Login failed: " + error.message);
   }
 }
 

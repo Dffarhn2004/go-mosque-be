@@ -6,7 +6,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "postinstall": "prisma generate",
     "test:latency": "node test-latency.js",
     "test:latency:prod": "node test-latency-prod.js"
   },

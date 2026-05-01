@@ -1,14 +1,15 @@
 [build]
-  command = "npm install --platform=linux --arch=x64 sharp && npm install && npx prisma generate"
+  command = "npm install && npx prisma generate"
   functions = "netlify/functions"
   publish = "public"
 
 [build.environment]
+  NODE_VERSION = "20"
   NODE_ENV = "production"
 
 [functions]
   node_bundler = "nft"
-  included_files = ["src/generated/**", "node_modules/.prisma/**"]
+  included_files = ["src/generated/**"]
 
 [[redirects]]
   from = "/*"

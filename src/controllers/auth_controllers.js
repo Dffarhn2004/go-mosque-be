@@ -87,6 +87,7 @@ exports.registerTakmir = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("[LOGIN] attempt for email:", email);
 
     const user = await authService.loginUser(email, password);
 
@@ -94,8 +95,12 @@ exports.login = async (req, res) => {
       return errorResponse(res, "Invalid email or password", 401);
     }
 
+    console.log("[LOGIN] success for email:", email);
     return successResponse(res, "Login successful", user, 200);
   } catch (error) {
+    console.error("[LOGIN CONTROLLER ERROR] name:", error.name);
+    console.error("[LOGIN CONTROLLER ERROR] message:", error.message);
+    console.error("[LOGIN CONTROLLER ERROR] stack:", error.stack);
     const statusCode = error.statusCode || 500;
     return errorResponse(
       res,

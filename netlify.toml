@@ -6,6 +6,10 @@
 [build.environment]
   NODE_ENV = "production"
 
+[functions]
+  node_bundler = "nft"
+  included_files = ["src/generated/**", "node_modules/.prisma/**"]
+
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/api"

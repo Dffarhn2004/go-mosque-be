@@ -1,11 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const router = require("./src/routes/main_router");
-const loggerMiddleware = require("./src/utils/logger");
 
 const app = express();
-
-app.use(loggerMiddleware);
 
 // Middleware untuk JSON
 app.use(express.json());

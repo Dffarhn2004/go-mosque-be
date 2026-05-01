@@ -54,11 +54,13 @@ exports.createDonasi = async (req, res) => {
     });
 
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(res, "User not found", 404);
     }
 
     const payload = req.body;
     payload.id_user = user.id;
+    payload.DonationChannel =
+      payload.DonationChannel === "GENERAL" ? "GENERAL" : "CAMPAIGN";
 
     // Ambil file dari req.files (karena pakai upload.fields)
 

@@ -14,6 +14,7 @@ const statistikRouter = require("./statistik_route")
 const accountRouter = require("./account_router")
 const jurnalRouter = require("./jurnal_router")
 const systemAdminRouter = require("./system_admin_router")
+const notificationRouter = require("./notification_router")
 
 const router = express.Router(); // Buat instance router Express
 
@@ -32,6 +33,7 @@ router.use('/statistik', statistikRouter)
 router.use("/coa", accountRouter) // Chart of Accounts routes
 router.use("/jurnal", jurnalRouter) // Jurnal routes
 router.use("/system-admin", systemAdminRouter)
+router.use("/notifications", notificationRouter)
 // router.use('/product',productRouter)
 
 // Export router untuk digunakan di main.js

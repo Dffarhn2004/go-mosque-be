@@ -130,6 +130,20 @@ async function updateMasjidFull(idMasjid, p, fileFields) {
           ...(p.Nama && { Nama: p.Nama }),
           ...(p.Alamat && { Alamat: p.Alamat }),
           ...(p.NomorTelepon && { NomorTelepon: p.NomorTelepon }),
+          ...(p.isOpenForGeneralDonation !== undefined && {
+            isOpenForGeneralDonation:
+              String(p.isOpenForGeneralDonation) === "true" ||
+              p.isOpenForGeneralDonation === true,
+          }),
+          ...(p.GeneralDonationTitle !== undefined && {
+            GeneralDonationTitle: p.GeneralDonationTitle || null,
+          }),
+          ...(p.GeneralDonationDescription !== undefined && {
+            GeneralDonationDescription: p.GeneralDonationDescription || null,
+          }),
+          ...(p.GeneralDonationImage !== undefined && {
+            GeneralDonationImage: p.GeneralDonationImage || null,
+          }),
           ...(p.TanggalBerdiri && {
             TanggalBerdiri: new Date(p.TanggalBerdiri),
           }),
@@ -205,7 +219,7 @@ async function updateMasjidFull(idMasjid, p, fileFields) {
 // Get list of masjid with pagination and search
 async function getMasjidList(options = {}) {
   try {
-    const { limit, offset = 0, search } = options;
+    const { limit, offset = 0, search, generalDonationOnly = false } = options;
 
     // Build where clause for search
     const whereClause = { isActive: true };
@@ -215,6 +229,10 @@ async function getMasjidList(options = {}) {
         { Deskripsi: { contains: search, mode: "insensitive" } },
         { Alamat: { contains: search, mode: "insensitive" } },
       ];
+    }
+
+    if (generalDonationOnly) {
+      whereClause.isOpenForGeneralDonation = true;
     }
 
     // Get total count for pagination
@@ -231,6 +249,10 @@ async function getMasjidList(options = {}) {
         Alamat: true,
         NomorTelepon: true,
         FotoLuarMasjid: true,
+        isOpenForGeneralDonation: true,
+        GeneralDonationTitle: true,
+        GeneralDonationDescription: true,
+        GeneralDonationImage: true,
       },
     };
 
@@ -252,6 +274,10 @@ async function getMasjidList(options = {}) {
       FotoMasjid: masjid.FotoLuarMasjid && masjid.FotoLuarMasjid.length > 0
         ? masjid.FotoLuarMasjid[0]
         : null,
+      isOpenForGeneralDonation: masjid.isOpenForGeneralDonation,
+      GeneralDonationTitle: masjid.GeneralDonationTitle || null,
+      GeneralDonationDescription: masjid.GeneralDonationDescription || null,
+      GeneralDonationImage: masjid.GeneralDonationImage || null,
       NoTelepon: masjid.NomorTelepon || null,
       Email: null, // Not in schema
       Website: null, // Not in schema

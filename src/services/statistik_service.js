@@ -13,8 +13,11 @@ async function getAllStatistik(idMasjid) {
   // 2. Total Kas Masuk: Semua donasi sukses dari donasi_masjid tsb
   const cashIn = await prisma.donasi.aggregate({
     where: {
-      id_donasi_masjid: { in: donasiMasjidIds },
       StatusDonasi: "Sukses",
+      OR: [
+        { masjidId: idMasjid },
+        { id_donasi_masjid: { in: donasiMasjidIds } },
+      ],
     },
     _sum: {
       JumlahDonasi: true,
@@ -33,6 +36,29 @@ async function getAllStatistik(idMasjid) {
     _count: true,
   });
 
+  const generalDonations = await prisma.donasi.aggregate({
+    where: {
+      masjidId: idMasjid,
+      DonationChannel: "GENERAL",
+      StatusDonasi: "Sukses",
+    },
+    _sum: {
+      JumlahDonasi: true,
+    },
+    _count: true,
+  });
+
+  const campaignDonations = await prisma.donasi.aggregate({
+    where: {
+      id_donasi_masjid: { in: donasiMasjidIds },
+      StatusDonasi: "Sukses",
+    },
+    _sum: {
+      JumlahDonasi: true,
+    },
+    _count: true,
+  });
+
   return {
     cashIn: {
       total: Number(cashIn._sum.JumlahDonasi || 0),
@@ -44,6 +70,14 @@ async function getAllStatistik(idMasjid) {
     },
     transactions: {
       total: cashIn._count + cashOut._count,
+    },
+    generalDonations: {
+      total: Number(generalDonations._sum.JumlahDonasi || 0),
+      count: generalDonations._count,
+    },
+    campaignDonations: {
+      total: Number(campaignDonations._sum.JumlahDonasi || 0),
+      count: campaignDonations._count,
     },
   };
 }

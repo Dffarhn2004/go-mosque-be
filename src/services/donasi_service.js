@@ -20,7 +20,11 @@ async function getAllDonasi(idUser) {
           kategori_donasi: true,
         },
       },
+      masjid: true,
       user: true, // Include related User data
+    },
+    orderBy: {
+      CreatedAt: "desc",
     },
   });
 }
@@ -30,16 +34,28 @@ async function getAllDonaturTakmir(idUser) {
 
   return await prisma.donasi.findMany({
     where: {
-      donasi_masjid:{
-        masjid:{
-          users: {
-            some: {
-              id: idUser, // Filter by userId
+      OR: [
+        {
+          donasi_masjid: {
+            masjid: {
+              users: {
+                some: {
+                  id: idUser,
+                },
+              },
             },
           },
-        }
-      }
-
+        },
+        {
+          masjid: {
+            users: {
+              some: {
+                id: idUser,
+              },
+            },
+          },
+        },
+      ],
     },
 
     include: {
@@ -49,6 +65,7 @@ async function getAllDonaturTakmir(idUser) {
           kategori_donasi: true,
         },
       },
+      masjid: true,
       jurnalApprovalBy: {
         select: {
           id: true,
@@ -91,24 +108,56 @@ async function getDonasi(idDonasi, idUser) {
 
 async function createDonasi(data) {
   const donationAmount = new Decimal(data.JumlahDonasi);
+  const donationChannel = data.DonationChannel === "GENERAL" ? "GENERAL" : "CAMPAIGN";
 
   return await prisma.$transaction(async (tx) => {
-    const targetDonasiMasjid = await tx.donasi_Masjid.findUnique({
-      where: { id: data.id_donasi_masjid },
-    });
+    let targetDonasiMasjid = null;
+    let targetMasjidId = data.masjidId || null;
 
-    if (!targetDonasiMasjid) {
-      throw new Error("Donasi masjid tidak ditemukan");
+    if (donationChannel === "CAMPAIGN") {
+      targetDonasiMasjid = await tx.donasi_Masjid.findUnique({
+        where: { id: data.id_donasi_masjid },
+      });
+
+      if (!targetDonasiMasjid) {
+        throw new Error("Donasi masjid tidak ditemukan");
+      }
+
+      targetMasjidId = targetDonasiMasjid.id_masjid;
+    } else {
+      if (!targetMasjidId) {
+        throw new Error("Masjid tujuan donasi umum wajib diisi");
+      }
+
+      const masjid = await tx.masjid.findUnique({
+        where: { id: targetMasjidId },
+        select: {
+          id: true,
+          isOpenForGeneralDonation: true,
+        },
+      });
+
+      if (!masjid) {
+        throw new Error("Masjid tujuan donasi tidak ditemukan");
+      }
+
+      if (!masjid.isOpenForGeneralDonation) {
+        throw new Error("Masjid belum membuka donasi umum");
+      }
     }
 
     const createdDonasi = await tx.donasi.create({
       data: {
         ...data,
+        DonationChannel: donationChannel,
         JumlahDonasi: donationAmount,
+        id_donasi_masjid:
+          donationChannel === "CAMPAIGN" ? data.id_donasi_masjid : null,
+        masjidId: targetMasjidId,
       },
     });
 
-    if (data.StatusDonasi === "Sukses") {
+    if (data.StatusDonasi === "Sukses" && donationChannel === "CAMPAIGN") {
       await tx.donasi_Masjid.update({
         where: { id: data.id_donasi_masjid },
         data: {
@@ -117,6 +166,37 @@ async function createDonasi(data) {
           },
         },
       });
+    }
+
+    if (data.StatusDonasi === "Sukses" && targetMasjidId) {
+      const takmirUsers = await tx.user.findMany({
+        where: {
+          masjidId: targetMasjidId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (takmirUsers.length > 0) {
+        const donationTargetName =
+          donationChannel === "GENERAL"
+            ? "donasi umum masjid"
+            : targetDonasiMasjid?.Nama || "campaign donasi";
+
+        await tx.notification.createMany({
+          data: takmirUsers.map((takmir) => ({
+            userId: takmir.id,
+            title: "Donasi baru masuk",
+            message: `${data.Nama} berdonasi Rp${Number(donationAmount).toLocaleString(
+              "id-ID"
+            )} untuk ${donationTargetName}.`,
+            type: "DONATION",
+            entityType: "DONATION",
+            entityId: createdDonasi.id,
+          })),
+        });
+      }
     }
 
     return createdDonasi;
@@ -142,15 +222,28 @@ async function updateDonasiJurnalApproval({
     const donasi = await tx.donasi.findFirst({
       where: {
         id: donationId,
-        donasi_masjid: {
-          masjid: {
-            users: {
-              some: {
-                id: takmirUserId,
+        OR: [
+          {
+            donasi_masjid: {
+              masjid: {
+                users: {
+                  some: {
+                    id: takmirUserId,
+                  },
+                },
               },
             },
           },
-        },
+          {
+            masjid: {
+              users: {
+                some: {
+                  id: takmirUserId,
+                },
+              },
+            },
+          },
+        ],
       },
       include: {
         donasi_masjid: {
@@ -158,6 +251,7 @@ async function updateDonasiJurnalApproval({
             masjid: true,
           },
         },
+        masjid: true,
       },
     });
 
@@ -177,7 +271,7 @@ async function updateDonasiJurnalApproval({
       const reference = `DONASI:${donationId}`;
       const linkedTransaction = await tx.jurnalTransaction.findFirst({
         where: {
-          masjidId: donasi.donasi_masjid.id_masjid,
+          masjidId: donasi.masjidId || donasi.donasi_masjid?.id_masjid,
           OR: [
             { referensi: reference },
             ...(jurnalTransactionId ? [{ id: jurnalTransactionId }] : []),
@@ -214,6 +308,7 @@ async function updateDonasiJurnalApproval({
             kategori_donasi: true,
           },
         },
+        masjid: true,
         jurnalApprovalBy: {
           select: {
             id: true,
@@ -244,7 +339,7 @@ async function updateDonasiJurnalApproval({
         metadata: {
           donasiId: updated.id,
           donasiMasjidId: updated.id_donasi_masjid,
-          masjidId: updated.donasi_masjid?.id_masjid,
+          masjidId: updated.masjidId || updated.donasi_masjid?.id_masjid,
           status,
           reason: reason?.trim() || null,
           jurnalTransactionId,

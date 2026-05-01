@@ -63,7 +63,7 @@ exports.getMasjidUser = async (req, res) => {
 // Get list of masjid (public endpoint)
 exports.getMasjidList = async (req, res) => {
   try {
-    const { limit, offset, search } = req.query;
+    const { limit, offset, search, generalDonationOnly } = req.query;
 
     // Validate query parameters
     const limitNum = limit ? parseInt(limit) : undefined;
@@ -81,6 +81,7 @@ exports.getMasjidList = async (req, res) => {
       limit: limitNum,
       offset: offsetNum,
       search: search || undefined,
+      generalDonationOnly: generalDonationOnly === "true",
     });
 
     // Return response sesuai dokumentasi API
@@ -133,6 +134,10 @@ exports.updateMasjid = async (req, res) => {
       "Nama",
       "Alamat",
       "NomorTelepon",
+      "isOpenForGeneralDonation",
+      "GeneralDonationTitle",
+      "GeneralDonationDescription",
+      "GeneralDonationImage",
       "TanggalBerdiri",
       "StatusKepemilikan",
       "LuasTanah",

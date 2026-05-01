@@ -23,6 +23,7 @@ model User {
   donasi      Donasi[]
   approvedDonasiJurnal Donasi[] @relation("DonasiJurnalApprovalBy")
   auditLogs   AuditLog[]
+  notifications Notification[]
   updatedConfigs SystemConfig[] @relation("SystemConfigUpdatedBy")
   masjid      Masjid?  @relation(fields: [masjidId], references: [id])
   role        Role     @relation(fields: [roleId], references: [id])
@@ -44,6 +45,10 @@ model Masjid {
   Alamat                    String
   NomorTelepon              String
   isActive                  Boolean                     @default(true)
+  isOpenForGeneralDonation  Boolean                     @default(true)
+  GeneralDonationTitle      String?
+  GeneralDonationDescription String?
+  GeneralDonationImage      String?
   TanggalBerdiri            DateTime?
   LuasTanah                 Float?
   Kapasitas_Jamaah          Int?
@@ -63,6 +68,7 @@ model Masjid {
   kegiatanMasjid            Kegiatan_Masjid[]
   laporanMasjid             LaporanKeuanganMasjid[]
   pengeluaran_donasi_masjid Pengeluaran_Donasi_Masjid[]
+  generalDonations          Donasi[]                    @relation("MasjidGeneralDonations")
   users                     User[]
 
   @@map("Masjid")
@@ -124,18 +130,21 @@ model Donasi {
   Nama                 String
   Keterangan           String?
   JumlahDonasi         Decimal              @db.Decimal(15, 2)
+  DonationChannel      DonationChannel      @default(CAMPAIGN)
   StatusDonasi         StatusDonasi         @default(Pending)
   JurnalApprovalStatus JurnalApprovalStatus @default(PENDING)
   JurnalApprovalAt     DateTime?
   JurnalApprovalById   String?
   JurnalApprovalReason String?
   CreatedAt            DateTime             @default(now())
-  id_donasi_masjid     String
+  id_donasi_masjid     String?
+  masjidId             String?
   id_user              String
   Email                String?
   NoTelepon            String?
-  donasi_masjid        Donasi_Masjid        @relation(fields: [id_donasi_masjid], references: [id])
+  donasi_masjid        Donasi_Masjid?       @relation(fields: [id_donasi_masjid], references: [id])
   jurnalApprovalBy     User?                @relation("DonasiJurnalApprovalBy", fields: [JurnalApprovalById], references: [id])
+  masjid               Masjid?              @relation("MasjidGeneralDonations", fields: [masjidId], references: [id])
   user                 User                 @relation(fields: [id_user], references: [id])
 
   @@map("Donasi")
@@ -265,6 +274,24 @@ model SystemConfig {
   @@map("SystemConfig")
 }
 
+model Notification {
+  id         String           @id @default(cuid())
+  title      String
+  message    String
+  type       NotificationType @default(DONATION)
+  entityType String?
+  entityId   String?
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  readAt     DateTime?
+  userId     String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("Notification")
+}
+
 enum StatusKepemilikan {
   MILIK_SENDIRI
   TANAH_WAKAF
@@ -293,6 +320,11 @@ enum KondisiFasilitas {
 enum StatusDonasi {
   Pending
   Sukses
+}
+
+enum DonationChannel {
+  GENERAL
+  CAMPAIGN
 }
 
 enum JurnalApprovalStatus {
@@ -338,4 +370,8 @@ enum AccountCategory {
 enum JurnalTipe {
   DEBIT
   KREDIT
+}
+
+enum NotificationType {
+  DONATION
 }

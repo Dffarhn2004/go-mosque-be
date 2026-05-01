@@ -5,6 +5,8 @@ const path = require("path");
 
 const env = process.env.NODE_ENV || "development";
 const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV;
+const isNetlify = !!process.env.NETLIFY;
+const isServerless = isVercel || isNetlify;
 const logDir = "logs";
 
 const logFormat = format.printf(({ level, message, timestamp, ...meta }) => {
@@ -25,8 +27,8 @@ const logger = createLogger({
   transports: [],
 });
 
-// In Vercel/production, only use console transport (read-only filesystem)
-if (isVercel || env === "production") {
+// In serverless/production, only use console transport (read-only filesystem)
+if (isServerless || env === "production") {
   logger.add(
     new transports.Console({
       format: format.combine(format.colorize(), format.simple()),

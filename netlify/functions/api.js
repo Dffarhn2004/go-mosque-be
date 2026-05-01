@@ -1,25 +1,29 @@
 const serverless = require("serverless-http");
 const app = require("../../index");
 
-const handler = serverless(app);
+module.exports.handler = serverless(app, {
+  request(req, event) {
+    console.log("[EVENT] method:", event.httpMethod);
+    console.log("[EVENT] path:", event.path);
+    console.log("[EVENT] body:", event.body);
+    console.log("[EVENT] isBase64Encoded:", event.isBase64Encoded);
+    console.log("[EVENT] content-type:", req.headers["content-type"]);
 
-module.exports.handler = async (event, context) => {
-  console.log("[EVENT] httpMethod:", event.httpMethod);
-  console.log("[EVENT] path:", event.path);
-  console.log("[EVENT] isBase64Encoded:", event.isBase64Encoded);
-  console.log("[EVENT] content-type:", event.headers?.["content-type"]);
-  console.log("[EVENT] body:", event.body);
+    if (event.body) {
+      const raw = event.isBase64Encoded
+        ? Buffer.from(event.body, "base64").toString("utf-8")
+        : event.body;
 
-  // Decode base64 body jika Netlify encode body sebagai base64
-  if (event.isBase64Encoded && event.body) {
-    event.body = Buffer.from(event.body, "base64").toString("utf-8");
-    event.isBase64Encoded = false;
-  }
+      const ct = req.headers["content-type"] || "";
+      try {
+        req.body = ct.includes("application/json") ? JSON.parse(raw) : raw;
+      } catch {
+        req.body = {};
+      }
+    } else {
+      req.body = {};
+    }
 
-  // Pastikan body adalah string (bukan object) agar express.json() bisa parse
-  if (event.body && typeof event.body === "object") {
-    event.body = JSON.stringify(event.body);
-  }
-
-  return handler(event, context);
-};
+    console.log("[REQ BODY]", JSON.stringify(req.body));
+  },
+});

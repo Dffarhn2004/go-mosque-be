@@ -10,6 +10,12 @@ donasiRoute.get("/", authenticateJWT, donasiMasjid.getAllDonasi);
 
 donasiRoute.get("/donatur", authenticateJWT, donasiMasjid.getAllDonaturMasjid);
 
+donasiRoute.patch(
+  "/:donationId/jurnal-approval",
+  authenticateJWT,
+  donasiMasjid.updateJurnalApproval
+);
+
 donasiRoute.get("/:idDonasiMasjid", authenticateJWT, donasiMasjid.getDonasi);
 
 donasiRoute.post("/", authenticateJWT, donasiMasjid.createDonasi);

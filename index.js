@@ -23,11 +23,11 @@ app.get("/", (req, res) => {
 // Router utama
 app.use("/api/v1", router);
 
-// Export app for Vercel
+// Export app for Vercel & Netlify
 module.exports = app;
 
-// Start server only if not in Vercel environment
-if (process.env.NODE_ENV !== "production" || process.env.VERCEL !== "1") {
+// Start server only if not in serverless environment
+if (!process.env.VERCEL && !process.env.NETLIFY) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

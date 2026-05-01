@@ -205,6 +205,20 @@ async function createJurnalTransaction(transactionData) {
       throw new CustomError("Masjid not found", 404);
     }
 
+    if (referensi) {
+      const existingReference = await prisma.jurnalTransaction.findFirst({
+        where: {
+          masjidId,
+          referensi,
+        },
+        select: { id: true },
+      });
+
+      if (existingReference) {
+        throw new CustomError("Referensi jurnal ini sudah pernah diproses", 409);
+      }
+    }
+
     // Validate all accounts
     const accountIds = entries.map((e) => e.akunId);
     const accounts = await prisma.account.findMany({

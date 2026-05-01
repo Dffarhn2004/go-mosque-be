@@ -69,3 +69,26 @@ exports.createDonasi = async (req, res) => {
     errorResponse(res, "Failed to create donasi masjid: " + err.message);
   }
 };
+
+exports.updateJurnalApproval = async (req, res) => {
+  try {
+    const { donationId } = req.params;
+    const { status, reason, jurnalTransactionId } = req.body;
+
+    const updatedDonasi = await donasiService.updateDonasiJurnalApproval({
+      donationId,
+      takmirUserId: req.user.id,
+      status,
+      reason,
+      jurnalTransactionId,
+    });
+
+    successResponse(res, "Status approval jurnal donasi berhasil diperbarui", updatedDonasi);
+  } catch (err) {
+    console.error("Error updating donation jurnal approval:", err);
+    if (err.statusCode) {
+      return errorResponse(res, err.message, err.statusCode);
+    }
+    errorResponse(res, "Failed to update donation jurnal approval: " + err.message);
+  }
+};

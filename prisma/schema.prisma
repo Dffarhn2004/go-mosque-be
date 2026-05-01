@@ -20,6 +20,7 @@ model User {
   roleId      String
   masjidId    String?
   donasi      Donasi[]
+  approvedDonasiJurnal Donasi[] @relation("DonasiJurnalApprovalBy")
   auditLogs   AuditLog[]
   updatedConfigs SystemConfig[] @relation("SystemConfigUpdatedBy")
   masjid      Masjid?  @relation(fields: [masjidId], references: [id])
@@ -118,18 +119,23 @@ model Kategori_Pengeluaran {
 }
 
 model Donasi {
-  id               String        @id @default(cuid())
-  Nama             String
-  Keterangan       String?
-  JumlahDonasi     Decimal       @db.Decimal(15, 2)
-  StatusDonasi     StatusDonasi  @default(Pending)
-  CreatedAt        DateTime      @default(now())
-  id_donasi_masjid String
-  id_user          String
-  Email            String?
-  NoTelepon        String?
-  donasi_masjid    Donasi_Masjid @relation(fields: [id_donasi_masjid], references: [id])
-  user             User          @relation(fields: [id_user], references: [id])
+  id                   String               @id @default(cuid())
+  Nama                 String
+  Keterangan           String?
+  JumlahDonasi         Decimal              @db.Decimal(15, 2)
+  StatusDonasi         StatusDonasi         @default(Pending)
+  JurnalApprovalStatus JurnalApprovalStatus @default(PENDING)
+  JurnalApprovalAt     DateTime?
+  JurnalApprovalById   String?
+  JurnalApprovalReason String?
+  CreatedAt            DateTime             @default(now())
+  id_donasi_masjid     String
+  id_user              String
+  Email                String?
+  NoTelepon            String?
+  donasi_masjid        Donasi_Masjid        @relation(fields: [id_donasi_masjid], references: [id])
+  jurnalApprovalBy     User?                @relation("DonasiJurnalApprovalBy", fields: [JurnalApprovalById], references: [id])
+  user                 User                 @relation(fields: [id_user], references: [id])
 
   @@map("Donasi")
 }
@@ -286,6 +292,12 @@ enum KondisiFasilitas {
 enum StatusDonasi {
   Pending
   Sukses
+}
+
+enum JurnalApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum AccountType {

@@ -3,6 +3,7 @@ const express = require("express");
 const donasiMasjid = require("../controllers/donasi_controllers");
 
 const authenticateJWT = require("../middleware/jwt/jwt.middleware");
+const optionalAuthenticateJWT = require("../middleware/jwt/optional_jwt.middleware");
 
 const donasiRoute = express.Router();
 
@@ -18,6 +19,6 @@ donasiRoute.patch(
 
 donasiRoute.get("/:idDonasiMasjid", authenticateJWT, donasiMasjid.getDonasi);
 
-donasiRoute.post("/", authenticateJWT, donasiMasjid.createDonasi);
+donasiRoute.post("/", optionalAuthenticateJWT, donasiMasjid.createDonasi);
 
 module.exports = donasiRoute;

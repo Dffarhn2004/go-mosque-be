@@ -1,0 +1,2 @@
+ALTER TABLE "Donasi"
+ALTER COLUMN "id_user" DROP NOT NULL;

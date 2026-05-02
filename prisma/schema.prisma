@@ -139,13 +139,13 @@ model Donasi {
   CreatedAt            DateTime             @default(now())
   id_donasi_masjid     String?
   masjidId             String?
-  id_user              String
+  id_user              String?
   Email                String?
   NoTelepon            String?
   donasi_masjid        Donasi_Masjid?       @relation(fields: [id_donasi_masjid], references: [id])
   jurnalApprovalBy     User?                @relation("DonasiJurnalApprovalBy", fields: [JurnalApprovalById], references: [id])
   masjid               Masjid?              @relation("MasjidGeneralDonations", fields: [masjidId], references: [id])
-  user                 User                 @relation(fields: [id_user], references: [id])
+  user                 User?                @relation(fields: [id_user], references: [id])
 
   @@map("Donasi")
 }

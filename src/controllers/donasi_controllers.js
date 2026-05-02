@@ -49,20 +49,23 @@ exports.getDonasi = async (req, res) => {
 // POST /roles - Create a new role
 exports.createDonasi = async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-    });
+    const payload = req.body;
+    if (req.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+      });
 
-    if (!user) {
-      return errorResponse(res, "User not found", 404);
+      if (!user) {
+        return errorResponse(res, "User not found", 404);
+      }
+
+      payload.id_user = user.id;
+    } else {
+      payload.id_user = null;
     }
 
-    const payload = req.body;
-    payload.id_user = user.id;
     payload.DonationChannel =
       payload.DonationChannel === "GENERAL" ? "GENERAL" : "CAMPAIGN";
-
-    // Ambil file dari req.files (karena pakai upload.fields)
 
     const newDonasi = await donasiService.createDonasi(payload);
 

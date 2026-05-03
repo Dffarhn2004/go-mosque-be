@@ -88,7 +88,7 @@ async function getAllDonaturTakmir(idUser) {
 }
 
 async function getDonasi(idDonasi, idUser) {
-  return await prisma.donasi.findUnique({
+  return await prisma.donasi.findFirst({
     where: {
       id_user: idUser, // Filter by userId
       id: idDonasi, // Filter by donasiId

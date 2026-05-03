@@ -34,15 +34,15 @@ exports.getAllDonaturMasjid = async (req, res) => {
 // GET /roles - Get all roles
 exports.getDonasi = async (req, res) => {
   try {
-    const idDonasi = req.params.idDonasi;
+    const idDonasi = req.params.idDonasiMasjid;
 
-    const donasi = await donasiService.getDonasi(idDonasi);
-    if (!donasiMasjid) {
-      return errorResponse(res, "No roles found", 404);
+    const donasi = await donasiService.getDonasi(idDonasi, req.user.id);
+    if (!donasi) {
+      return errorResponse(res, "Donasi tidak ditemukan", 404);
     }
-    successResponse(res, "Roles fetched successfully", donasiMasjid);
+    successResponse(res, "Donasi fetched successfully", donasi);
   } catch (err) {
-    errorResponse(res, "Failed to fetch roles: " + err.message);
+    errorResponse(res, "Failed to fetch donasi: " + err.message);
   }
 };
 

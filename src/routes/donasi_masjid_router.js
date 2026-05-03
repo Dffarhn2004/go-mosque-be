@@ -2,6 +2,7 @@ const express = require("express");
 
 const donasiMasjidController = require("../controllers/donasi_masjid_controllers");
 const authenticateJWT = require("../middleware/jwt/jwt.middleware");
+const optionalAuthenticateJWT = require("../middleware/jwt/optional_jwt.middleware");
 const { default: upload } = require("../utils/multer");
 
 const donasiMasjidRoute = express.Router();
@@ -19,7 +20,7 @@ donasiMasjidRoute.get(
 
 donasiMasjidRoute.get(
   "/:idDonasiMasjid",
-  authenticateJWT,
+  optionalAuthenticateJWT,
   donasiMasjidController.getDonasiMasjidUser
 );
 donasiMasjidRoute.get(

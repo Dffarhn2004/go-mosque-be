@@ -157,18 +157,9 @@ async function createDonasi(data) {
       },
     });
 
-    if (data.StatusDonasi === "Sukses" && donationChannel === "CAMPAIGN") {
-      await tx.donasi_Masjid.update({
-        where: { id: data.id_donasi_masjid },
-        data: {
-          UangDonasiTerkumpul: {
-            increment: donationAmount,
-          },
-        },
-      });
-    }
-
-    if (data.StatusDonasi === "Sukses" && targetMasjidId) {
+    // Donasi baru masuk seharusnya berstatus Pending dan menunggu verifikasi.
+    // Notifikasi tetap dikirim agar takmir tahu ada donasi baru.
+    if (targetMasjidId) {
       const takmirUsers = await tx.user.findMany({
         where: {
           masjidId: targetMasjidId,
@@ -190,7 +181,7 @@ async function createDonasi(data) {
             title: "Donasi baru masuk",
             message: `${data.Nama} berdonasi Rp${Number(donationAmount).toLocaleString(
               "id-ID"
-            )} untuk ${donationTargetName}.`,
+            )} untuk ${donationTargetName} (menunggu verifikasi).`,
             type: "DONATION",
             entityType: "DONATION",
             entityId: createdDonasi.id,
@@ -259,8 +250,8 @@ async function updateDonasiJurnalApproval({
       throw new CustomError("Donasi tidak ditemukan", 404);
     }
 
-    if (donasi.StatusDonasi !== "Sukses") {
-      throw new CustomError("Hanya donasi sukses yang bisa diproses", 400);
+    if (donasi.StatusDonasi !== "Pending") {
+      throw new CustomError("Hanya donasi pending yang bisa diproses verifikasi", 400);
     }
 
     if (donasi.JurnalApprovalStatus !== "PENDING") {
@@ -291,11 +282,14 @@ async function updateDonasiJurnalApproval({
       }
     }
 
+    const nextStatusDonasi = status === "APPROVED" ? "Sukses" : "Pending";
+
     const updated = await tx.donasi.update({
       where: {
         id: donationId,
       },
       data: {
+        StatusDonasi: nextStatusDonasi,
         JurnalApprovalStatus: status,
         JurnalApprovalAt: new Date(),
         JurnalApprovalById: takmirUserId,
@@ -347,6 +341,17 @@ async function updateDonasiJurnalApproval({
         },
       },
     });
+
+    if (status === "APPROVED" && updated.id_donasi_masjid) {
+      await tx.donasi_Masjid.update({
+        where: { id: updated.id_donasi_masjid },
+        data: {
+          UangDonasiTerkumpul: {
+            increment: updated.JumlahDonasi,
+          },
+        },
+      });
+    }
 
     return updated;
   });

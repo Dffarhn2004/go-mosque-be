@@ -39,8 +39,15 @@ exports.getAllDonasiMasjidUser = async (req, res) => {
   try {
 
     const donasiMasjidLimit = parseInt(req.query.limit) || 10; // Default limit to 10 if not provided
+    const masjidId =
+      typeof req.query.masjidId === "string" && req.query.masjidId.trim()
+        ? req.query.masjidId.trim()
+        : undefined;
 
-    const donasiMasjids = await donasiMasjidService.getAllDonasiMasjidUser(donasiMasjidLimit);
+    const donasiMasjids = await donasiMasjidService.getAllDonasiMasjidUser(
+      donasiMasjidLimit,
+      masjidId
+    );
     if (!donasiMasjids) {
       return errorResponse(res, "No Donasi Masjid found", 404);
     }

@@ -31,8 +31,10 @@ async function getAllDonasiMasjid(idMasjid, limit) {
 }
 
 //get all donasi masjid for user
-async function getAllDonasiMasjidUser(limit) {
+async function getAllDonasiMasjidUser(limit, masjidId) {
+  const where = masjidId ? { id_masjid: masjidId } : {};
   return await prisma.donasi_Masjid.findMany({
+    where,
     include: {
       masjid: true, // Include related Masjid data
       pengeluaran_donasi_masjid: true, // Include related pengeluaran_donasi_masjid data
